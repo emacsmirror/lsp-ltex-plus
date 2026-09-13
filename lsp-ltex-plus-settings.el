@@ -455,7 +455,10 @@ positive value restores LanguageTool's own caching instead."
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-completion-enabled nil
-  "Controls whether completion is enabled (IntelliSense)."
+  "Whether the server offers word completion.
+Not available in 1.0.0: the client does not yet request completions.
+Planned for a future release; until then the setting has no visible
+effect, though it is still sent to the server."
   :type 'boolean
   :safe #'booleanp
   :group 'lsp-ltex-plus)

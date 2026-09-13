@@ -471,7 +471,7 @@ An empty space means the parameter has no direct counterpart at that layer: typi
 | `lsp-ltex-plus-max-request-size` | L | X | Largest amount of text, in characters, sent to LanguageTool in a single request when a run of changed paragraphs is batched together (typically the first, whole-document check). Text exceeding this is split across several requests; an individual paragraph is never split. The default fits within the [per-request character limit](https://languagetool.org/http-api/) of the free remote service; if you use a local server (`lsp-ltex-plus-lt-server-uri` is nil) or have a Premium account, consider raising it to 60000. *Type:* integer; *default:* `20000`. | X | |
 | `lsp-ltex-plus-paragraph-cache-ttl-minutes` | L | X | How long, in minutes, a document's cached results are kept after they stop being used, before a background sweep drops them. The actively edited file always stays warm, and a document's cache is cleared immediately when the file is closed. *Type:* integer; *default:* `30`. | X | |
 | `lsp-ltex-plus-paragraph-cache-enabled` | L | X | Whether ltex-ls-plus reuses cached results for unchanged paragraphs so an edit only re-checks the paragraphs that changed. Set to nil to disable result reuse (not recommended) — every paragraph is re-checked on each pass. Paragraphs are still sliced and batched into requests, just never stored or served from the cache. *Type:* boolean; *default:* `t`. | X | |
-| `lsp-ltex-plus-completion-enabled` | L | X | Whether the server offers word completion. Sent to the server as before, but this client does not yet request completions, so it has no visible effect for now. *Type:* boolean; *default:* `nil`. | X | |
+| `lsp-ltex-plus-completion-enabled` | L | X | Whether the server offers word completion. Not available in 1.0.0, planned for a future release; the setting has no visible effect until then. *Type:* boolean; *default:* `nil`. | X | |
 | `lsp-ltex-plus-diagnostic-severity` | L | X | Severity of the diagnostics; it decides the flymake type, or flycheck level, the underline gets. *Choices:* `"error"`, `"warning"` (default), `"information"`, `"hint"`. | X | |
 | `lsp-ltex-plus-check-frequency` | L | X | Controls when documents should be checked. *Choices:* `"edit"` (default, after every pause in typing), `"save"` (on open and save), `"manual"` (explicit commands only). | X | |
 | `lsp-ltex-plus-clear-diagnostics-when-closing-file` | L | X | Whether to clear diagnostics when a file is closed. *Type:* boolean; *default:* `t`. | X | |
@@ -617,7 +617,7 @@ Version 1.0.0 replaced `lsp-mode` with the `jsonrpc` library bundled with Emacs 
 - **Debugging.** With `lsp-ltex-plus-debug` on, the exchange is in `*ltex-ls-plus events*` and the client's own steps in `*lsp-ltex-plus::client*`; the server's Java log is in `*ltex-ls-plus stderr*`. `lsp-log-io` and the `*lsp-log*` buffer play no part.
 - **Word lists need no migration.** The four plist files under `~/.emacs.d/lsp-ltex-plus/` are read as before, and your `:custom` lists and project `.dir-locals.el` entries mean what they meant.
 - **Three old command names are gone.** `lsp-ltex-plus-install-hooks` (renamed in 0.2.0) is `lsp-ltex-plus-enable-for-modes`; `lsp-ltex-plus-reload-external-settings` (0.3.1) and `lsp-ltex-plus-reload-and-notify-server` (0.5.0) are both `lsp-ltex-plus-reload-settings`. The aliases that kept them working are removed; a configuration still calling one gets an error naming the missing function.
-- **Word completion is not requested any more.** It came from `lsp-mode`'s completion machinery. If you relied on it, please say so in an issue (see [Word Completion](#word-completion)).
+- **Word completion is not available in 1.0.0.** It is planned for a future release; see [Word Completion](#word-completion).
 
 ## Troubleshooting
 
@@ -752,7 +752,7 @@ File-less buffers are checked by default — see [Checking file-less buffers](#c
 
 ### Word Completion
 
-`lsp-ltex-plus-completion-enabled` is sent to the server as before, but this client does not request completions: the word completion earlier releases offered came from `lsp-mode`'s completion machinery, which the client no longer uses. If you relied on it, please say so in an issue.
+Word completion, which 0.6.0 offered, is not available in 1.0.0. It is planned for a future release. The technical reason: in 0.6.0 the completions came through `lsp-mode`, and this client does not yet send the `textDocument/completion` request itself. The setting `lsp-ltex-plus-completion-enabled` still exists and is still sent to the server, but has no visible effect until then.
 
 ## Under the Hood
 
