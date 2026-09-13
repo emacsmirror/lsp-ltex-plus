@@ -54,13 +54,15 @@ what a user needs when deciding to disable the rule."
         (format "%s [%s]" message code)
       message)))
 
-(defun lsp-ltex-plus--flymake-diagnostic (diagnostic &optional buffer)
+(defun lsp-ltex-plus--flymake-diagnostic (diagnostic &optional buffer region)
   "Return the flymake diagnostic for the protocol DIAGNOSTIC in BUFFER.
-BUFFER defaults to the current buffer.  The protocol object rides along
-as the diagnostic's data, so a code action at point can find the
-diagnostics it applies to."
+BUFFER defaults to the current buffer.  REGION is (BEG . END), where
+DIAGNOSTIC is, when the caller has it from `lsp-ltex-plus--diagnostic-places';
+otherwise it is computed for this one diagnostic.  The protocol object
+rides along as the diagnostic's data, so a code action at point can
+find the diagnostics it applies to."
   (let ((buffer (or buffer (current-buffer))))
-    (pcase-let ((`(,beg . ,end) (lsp-ltex-plus--diagnostic-region diagnostic buffer)))
+    (pcase-let ((`(,beg . ,end) (or region (lsp-ltex-plus--diagnostic-region diagnostic buffer))))
       (flymake-make-diagnostic buffer beg end
                                (lsp-ltex-plus--flymake-type (plist-get diagnostic :severity))
                                (lsp-ltex-plus--flymake-text diagnostic)
@@ -97,9 +99,9 @@ whose backend flymake has not called yet, or where flymake is off."
       (when (and lsp-ltex-plus--flymake-report-fn flymake-mode)
         (lsp-ltex-plus--flymake-send
          lsp-ltex-plus--flymake-report-fn
-         (mapcar (lambda (diagnostic)
-                   (lsp-ltex-plus--flymake-diagnostic diagnostic buffer))
-                 lsp-ltex-plus--diagnostics))))))
+         (mapcar (pcase-lambda (`(,diagnostic ,beg ,end ,_ ,_))
+                   (lsp-ltex-plus--flymake-diagnostic diagnostic buffer (cons beg end)))
+                 (lsp-ltex-plus--diagnostic-places buffer)))))))
 
 (defun lsp-ltex-plus-flymake-backend (report-fn &rest _)
   "Report the server's diagnostics for the current buffer to flymake.

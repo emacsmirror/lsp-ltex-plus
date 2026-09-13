@@ -614,5 +614,74 @@ One without a version is: the server is allowed to omit it."
       (should (equal told (list buffer)))
       (should-not (buffer-local-value 'lsp-ltex-plus--diagnostics buffer)))))
 
+;;;; -- Placing every diagnostic in one pass -------------------------------------
+
+(defun ltex-plus-conn-test--diagnostic-at (line character end-line end-character)
+  "Return a protocol diagnostic spanning the given LSP positions."
+  (list :range (list :start (list :line line :character character)
+                     :end (list :line end-line :character end-character))
+        :severity 2 :code "X" :message "m"))
+
+(defconst ltex-plus-conn-test--scattered
+  (list (ltex-plus-conn-test--diagnostic-at 3 1 3 4)      ; later line first
+        (ltex-plus-conn-test--diagnostic-at 0 6 0 9)
+        (ltex-plus-conn-test--diagnostic-at 1 3 1 3)      ; empty range
+        (ltex-plus-conn-test--diagnostic-at 0 0 0 5)      ; same line, earlier
+        (ltex-plus-conn-test--diagnostic-at 2 4 2 8)      ; after an emoji
+        (ltex-plus-conn-test--diagnostic-at 40 0 40 3)    ; past the end
+        (ltex-plus-conn-test--diagnostic-at 1 2 2 1))     ; spans two lines
+  "Diagnostics in the order a server might send them, covering the cases
+the one-pass conversion has to get right: out of order, two on one line,
+an empty range, a character counted in two UTF-16 units before one, a
+line past the end, and a range across lines.")
+
+(ert-deftest ltex-plus-conn-test-places-agree-with-converting-one-at-a-time ()
+  "The one-pass placement gives every diagnostic the region the slow way does.
+The slow way walked from the document's start for each diagnostic, so
+thousands of them in a large buffer took seconds at every publish; the
+fast way must place each of them exactly where the slow way did."
+  (with-temp-buffer
+    (insert "Hello teh world.\nSecond line here.\nab\U0001F600cd efgh\nfourth line\n")
+    (setq lsp-ltex-plus--diagnostics ltex-plus-conn-test--scattered)
+    (let ((places (lsp-ltex-plus--diagnostic-places)))
+      (should (= (length places) (length ltex-plus-conn-test--scattered)))
+      (pcase-dolist (`(,diagnostic ,beg ,end ,beg-line ,end-line) places)
+        (should (equal (cons beg end) (lsp-ltex-plus--diagnostic-region diagnostic)))
+        (should (= beg-line (line-number-at-pos beg t)))
+        (should (= end-line (line-number-at-pos end t))))
+      (should (equal (mapcar #'car places) ltex-plus-conn-test--scattered)))))
+
+(ert-deftest ltex-plus-conn-test-places-agree-in-a-region-document ()
+  "With a document region, both ways count lines from the region's start."
+  (with-temp-buffer
+    (insert "prompt> Hello teh world.\nSecond line.\n")
+    (setq lsp-ltex-plus--document-region-function
+          (lambda () (cons 9 (point-max))))
+    (setq lsp-ltex-plus--diagnostics
+          (list (ltex-plus-conn-test--diagnostic-at 1 0 1 6)
+                (ltex-plus-conn-test--diagnostic-at 0 6 0 9)
+                (ltex-plus-conn-test--diagnostic-at 7 0 7 1)))
+    (pcase-dolist (`(,diagnostic ,beg ,end ,beg-line ,end-line)
+                   (lsp-ltex-plus--diagnostic-places))
+      (should (equal (cons beg end) (lsp-ltex-plus--diagnostic-region diagnostic)))
+      (should (= beg-line (line-number-at-pos beg t)))
+      (should (= end-line (line-number-at-pos end t))))))
+
+(ert-deftest ltex-plus-conn-test-places-are-kept-until-something-changes ()
+  "The places are computed once per publish and dropped on an edit.
+Flycheck and flymake ask again at every pause in typing; without the
+cache every pause would pay for the whole conversion."
+  (with-temp-buffer
+    (insert "Hello teh world.\n")
+    (setq lsp-ltex-plus--diagnostics (list (ltex-plus-conn-test--diagnostic-at 0 6 0 9)))
+    (let ((first (lsp-ltex-plus--diagnostic-places)))
+      (should (eq first (lsp-ltex-plus--diagnostic-places)))
+      ;; A new publish is a new list object, even with equal contents.
+      (setq lsp-ltex-plus--diagnostics (list (ltex-plus-conn-test--diagnostic-at 0 6 0 9)))
+      (should-not (eq first (lsp-ltex-plus--diagnostic-places)))
+      (let ((second (lsp-ltex-plus--diagnostic-places)))
+        (lsp-ltex-plus--after-change 1 2 0)
+        (should-not (eq second (lsp-ltex-plus--diagnostic-places)))))))
+
 (provide 'ltex-plus-conn-test)
 ;;; ltex-plus-conn-test.el ends here

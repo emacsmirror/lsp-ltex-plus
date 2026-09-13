@@ -432,6 +432,12 @@ document."
 Each is the protocol's diagnostic object, a plist, untouched; see the
 Diagnostics section below for reading positions out of one.")
 
+(defvar-local lsp-ltex-plus--diagnostic-places nil
+  "Cache for `lsp-ltex-plus--diagnostic-places': (DIAGNOSTICS . PLACES).
+DIAGNOSTICS is the very list object PLACES were computed for -- a
+publish stores a new list -- and `lsp-ltex-plus--after-change' clears
+the cache, so a stale entry is never read.")
+
 (defun lsp-ltex-plus--make-fileless-uri ()
   "Return a fresh URI for a buffer that visits no file.
 The server treats a document's URI as an opaque name -- it checked
@@ -628,6 +634,9 @@ What the edit changed is not looked at, see the comment above; where it
 happened is, when the buffer names a region of itself as the document:
 an edit wholly outside that region -- output arriving above a comint
 prompt -- is not a change to the document and sends nothing."
+  ;; Whatever the diagnostics were placed at, the text under them has
+  ;; moved; the next reader recomputes the places in one pass.
+  (setq lsp-ltex-plus--diagnostic-places nil)
   (when lsp-ltex-plus--document-uri
     (when-let* ((region (lsp-ltex-plus--document-region)))
       (when (or (null lsp-ltex-plus--document-region-function)
@@ -746,6 +755,93 @@ there is something to underline."
       (with-current-buffer (or buffer (current-buffer))
         (setq end (min (1+ end) (save-restriction (widen) (point-max))))))
     (cons beg end)))
+
+;; Converting one position walks from the document's start to its line,
+;; so converting every diagnostic on its own costs findings times lines:
+;; on a large changelog with thousands of findings, seconds -- and the
+;; front-ends ask again at every pause in typing, and the menu asks when
+;; it opens.  All positions are therefore resolved together, sorted so the
+;; buffer is walked once, and the result is kept until the diagnostics or
+;; the text change.
+
+(defun lsp-ltex-plus--resolve-positions (positions)
+  "Return where the LSP POSITIONS are in the current buffer, in one pass.
+POSITIONS is a list of (:line L :character C) plists.  The result is a
+vector, in the same order, of (POINT . LINE): the point as
+`lsp-ltex-plus--position-to-point' gives it, clamps included, and the
+1-based line number of that point in the widened buffer.  The positions
+are visited in buffer order, so the walk from the document's start
+happens once, however many there are."
+  (pcase-let* ((`(,dbeg . ,dend) (lsp-ltex-plus--document-region-or-end))
+               (result (make-vector (length positions) nil))
+               (indexed (let ((i -1))
+                          (mapcar (lambda (position) (cons (cl-incf i) position)) positions)))
+               (ordered (sort indexed
+                              (lambda (a b)
+                                (let ((la (plist-get (cdr a) :line))
+                                      (lb (plist-get (cdr b) :line)))
+                                  (or (< la lb)
+                                      (and (= la lb)
+                                           (< (plist-get (cdr a) :character)
+                                              (plist-get (cdr b) :character)))))))))
+    (save-excursion
+      (save-restriction
+        (widen)
+        (let* ((base (line-number-at-pos dbeg t))
+               (end-line nil)
+               (current 0)
+               (line-start dbeg)
+               (past nil))
+          (pcase-dolist (`(,index . ,position) ordered)
+            (let ((line (plist-get position :line))
+                  (units (plist-get position :character)))
+              (when (and (not past) (> line current))
+                (goto-char line-start)
+                (if (or (/= 0 (forward-line (- line current))) (> (point) dend))
+                    (setq past t)
+                  (setq current line
+                        line-start (point))))
+              (if past
+                  (aset result index
+                        (cons dend (or end-line (setq end-line (line-number-at-pos dend t)))))
+                (goto-char line-start)
+                (let ((limit (min (line-end-position) dend)))
+                  (while (and (> units 0) (< (point) limit))
+                    (setq units (- units (if (> (char-after) #xFFFF) 2 1)))
+                    (forward-char 1)))
+                (aset result index (cons (point) (+ base current)))))))))
+    result))
+
+(defun lsp-ltex-plus--diagnostic-places (&optional buffer)
+  "Return where BUFFER's stored diagnostics are, one entry per diagnostic.
+Each entry is (DIAGNOSTIC BEG END BEG-LINE END-LINE), in the order of
+`lsp-ltex-plus--diagnostics': BEG and END as `lsp-ltex-plus--diagnostic-region'
+gives them, and the 1-based line numbers of the two points.  Computed
+for all diagnostics in one pass over the buffer and kept until the
+diagnostics or the text change; the front-ends and the menu read this
+rather than converting each diagnostic on its own."
+  (with-current-buffer (or buffer (current-buffer))
+    (if (and lsp-ltex-plus--diagnostic-places
+             (eq (car lsp-ltex-plus--diagnostic-places) lsp-ltex-plus--diagnostics))
+        (cdr lsp-ltex-plus--diagnostic-places)
+      (let* ((diagnostics lsp-ltex-plus--diagnostics)
+             (resolved (lsp-ltex-plus--resolve-positions
+                        (mapcan (lambda (diagnostic)
+                                  (let ((range (plist-get diagnostic :range)))
+                                    (list (plist-get range :start) (plist-get range :end))))
+                                diagnostics)))
+             (limit (save-restriction (widen) (point-max)))
+             (i -1)
+             (places
+              (mapcar (lambda (diagnostic)
+                        (pcase-let ((`(,beg . ,beg-line) (aref resolved (cl-incf i)))
+                                    (`(,end . ,end-line) (aref resolved (cl-incf i))))
+                          (when (= beg end)
+                            (setq end (min (1+ end) limit)))
+                          (list diagnostic beg end beg-line end-line)))
+                      diagnostics)))
+        (setq lsp-ltex-plus--diagnostic-places (cons diagnostics places))
+        places))))
 
 (defun lsp-ltex-plus--on-publish-diagnostics (params)
   "Store the diagnostics in PARAMS with their buffer and run the hook.

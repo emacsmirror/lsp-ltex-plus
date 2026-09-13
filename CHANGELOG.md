@@ -3,6 +3,11 @@
 ## [Unreleased]
 
 
+## [1.0.1] - 2026-09-13
+
+### Fixed
+- **Typing in a large buffer with many findings no longer stalls Emacs.** Every finding was placed in the buffer on its own, walking from the top of the document to its line, so the work grew with findings times lines: on Emacs' ORG-NEWS, about ten thousand lines and thousands of findings, placing them all took two seconds, and it happened at every publish, at every pause in typing when flymake or flycheck asked again, and when the menu opened. The findings are now placed in one pass over the buffer, sorted by position, and the result is kept until the findings or the text change. The same case now takes twenty milliseconds. A regression against 0.6.0, whose front-end did this arithmetic differently.
+
 ## [1.0.0] - 2026-09-13
 
 The client no longer runs on `lsp-mode`. It speaks the Language Server Protocol itself, over the `jsonrpc` library bundled with Emacs, and shows the server's findings through flymake, or through flycheck if you prefer. The package name, the repository and every `lsp-ltex-plus-*` setting that still means something are unchanged; what changes is what you install beside it, how diagnostics are displayed, and where the commands are bound.

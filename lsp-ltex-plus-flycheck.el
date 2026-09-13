@@ -84,17 +84,30 @@ Counted in the widened buffer, which is where flycheck resolves them."
       (cons (line-number-at-pos)
             (1+ (- point (line-beginning-position)))))))
 
-(defun lsp-ltex-plus--flycheck-error (diagnostic &optional buffer)
+(defun lsp-ltex-plus--flycheck-column (point)
+  "Return the 1-based column of POINT in the current buffer, in characters."
+  (save-excursion
+    (goto-char point)
+    (1+ (- point (line-beginning-position)))))
+
+(defun lsp-ltex-plus--flycheck-error (diagnostic &optional buffer place)
   "Return the flycheck error for the protocol DIAGNOSTIC in BUFFER.
-BUFFER defaults to the current buffer.  The range is carried as a start
-and an end line and column, which flycheck highlights exactly; the rule
-id goes in the error's own id field, where flycheck shows it after the
-message."
+BUFFER defaults to the current buffer.  PLACE is (BEG END BEG-LINE
+END-LINE), where DIAGNOSTIC is, when the caller has it from
+`lsp-ltex-plus--diagnostic-places'; otherwise it is computed for this
+one diagnostic.  The range is carried as a start and an end line and
+column, which flycheck highlights exactly; the rule id goes in the
+error's own id field, where flycheck shows it after the message."
   (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
-      (pcase-let* ((`(,beg . ,end) (lsp-ltex-plus--diagnostic-region diagnostic buffer))
-                   (`(,line . ,column) (lsp-ltex-plus--flycheck-line-column beg))
-                   (`(,end-line . ,end-column) (lsp-ltex-plus--flycheck-line-column end))
+      (pcase-let* ((`(,beg ,end ,line ,end-line)
+                    (or place
+                        (pcase-let ((`(,beg . ,end) (lsp-ltex-plus--diagnostic-region diagnostic buffer)))
+                          (list beg end
+                                (car (lsp-ltex-plus--flycheck-line-column beg))
+                                (car (lsp-ltex-plus--flycheck-line-column end))))))
+                   (column (lsp-ltex-plus--flycheck-column beg))
+                   (end-column (lsp-ltex-plus--flycheck-column end))
                    (code (plist-get diagnostic :code)))
         (flycheck-error-new-at line column
                                (lsp-ltex-plus--flycheck-level (plist-get diagnostic :severity))
@@ -114,7 +127,9 @@ The `:start' function of the checker.  There is nothing to wait for:
 the server pushes, the connection layer stores, and a check is the
 moment flycheck reads what is stored."
   (funcall callback 'finished
-           (mapcar #'lsp-ltex-plus--flycheck-error lsp-ltex-plus--diagnostics)))
+           (mapcar (pcase-lambda (`(,diagnostic . ,place))
+                     (lsp-ltex-plus--flycheck-error diagnostic nil place))
+                   (lsp-ltex-plus--diagnostic-places))))
 
 (defun lsp-ltex-plus--flycheck-verify (_checker)
   "Describe the checker's state in this buffer for `flycheck-verify-setup'."
