@@ -77,6 +77,21 @@ shows after the message."
 
 ;;;; -- The checker ------------------------------------------------------------
 
+(ert-deftest ltex-plus-flycheck-test-an-error-from-a-place-equals-one-computed-alone ()
+  "The error built from a precomputed place is the one built the slow way."
+  (ltex-plus-flycheck-test--need-flycheck)
+  (with-temp-buffer
+    (insert "Hello teh world.\nSecond teh line.\n")
+    (setq lsp-ltex-plus--diagnostics
+          (append (ltex-plus-fake-diagnostics "Hello teh world.\nSecond teh line.\n") nil))
+    (pcase-dolist (`(,diagnostic . ,place) (lsp-ltex-plus--diagnostic-places))
+      (let ((fast (lsp-ltex-plus--flycheck-error diagnostic nil place))
+            (slow (lsp-ltex-plus--flycheck-error diagnostic)))
+        (dolist (slot '(flycheck-error-line flycheck-error-column
+                        flycheck-error-end-line flycheck-error-end-column
+                        flycheck-error-level flycheck-error-id flycheck-error-message))
+          (should (equal (funcall slot fast) (funcall slot slow))))))))
+
 (ert-deftest ltex-plus-flycheck-test-the-checker-is-defined-for-the-mode-table ()
   "The checker is defined for every mode the package knows.
 Its predicate keeps it out of a buffer the package is not checking, so

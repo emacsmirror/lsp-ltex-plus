@@ -41,13 +41,12 @@ included -- point just after a flagged word still counts as being on
 it.  These are what the server is given as the context of a code action
 request, and what decides which suggestions it makes."
   (with-current-buffer (or buffer (current-buffer))
-    (seq-filter (lambda (diagnostic)
-                  (pcase-let ((`(,dbeg . ,dend)
-                               (lsp-ltex-plus--diagnostic-region diagnostic)))
-                    (if (= beg end)
-                        (and (<= dbeg beg) (<= beg dend))
-                      (and (< dbeg end) (< beg dend)))))
-                lsp-ltex-plus--diagnostics)))
+    (mapcar #'car
+            (seq-filter (pcase-lambda (`(,_ ,dbeg ,dend ,_ ,_))
+                          (if (= beg end)
+                              (and (<= dbeg beg) (<= beg dend))
+                            (and (< dbeg end) (< beg dend))))
+                        (lsp-ltex-plus--diagnostic-places)))))
 
 (defun lsp-ltex-plus--request-code-actions (beg end)
   "Return the code actions the server offers for BEG..END in the current buffer.
