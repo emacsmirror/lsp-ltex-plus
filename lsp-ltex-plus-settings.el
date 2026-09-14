@@ -687,21 +687,35 @@ FMT is the format string, and ARGS are the arguments for it."
 
 ;;;; -- Dictionary Management --------------------------------------------------
 
-(defvar lsp-ltex-plus-dictionary-file
+(defcustom lsp-ltex-plus-dictionary-file
   (locate-user-emacs-file "lsp-ltex-plus/stored-dictionary.eld")
-  "Path to the external dictionary file (plist format).")
+  "Path to the external dictionary file (plist format).
+Set this before the package loads, or run
+`lsp-ltex-plus-reload-settings\=' afterwards.  An existing file is not
+moved for you."
+  :type 'file
+  :group 'lsp-ltex-plus)
 
-(defvar lsp-ltex-plus-enabled-rules-file
+(defcustom lsp-ltex-plus-enabled-rules-file
   (locate-user-emacs-file "lsp-ltex-plus/enabled-rules.eld")
-  "Path to the external enabled rules file (plist format).")
+  "Path to the external enabled rules file (plist format).
+Set it like `lsp-ltex-plus-dictionary-file\='."
+  :type 'file
+  :group 'lsp-ltex-plus)
 
-(defvar lsp-ltex-plus-disabled-rules-file
+(defcustom lsp-ltex-plus-disabled-rules-file
   (locate-user-emacs-file "lsp-ltex-plus/disabled-rules.eld")
-  "Path to the external disabled rules file (plist format).")
+  "Path to the external disabled rules file (plist format).
+Set it like `lsp-ltex-plus-dictionary-file\='."
+  :type 'file
+  :group 'lsp-ltex-plus)
 
-(defvar lsp-ltex-plus-hidden-false-positives-file
+(defcustom lsp-ltex-plus-hidden-false-positives-file
   (locate-user-emacs-file "lsp-ltex-plus/hidden-false-positives.eld")
-  "Path to the external hidden false positives file (plist format).")
+  "Path to the external hidden false positives file (plist format).
+Set it like `lsp-ltex-plus-dictionary-file\='."
+  :type 'file
+  :group 'lsp-ltex-plus)
 
 (defun lsp-ltex-plus--load-plist (file-path)
   "Load a plist from FILE-PATH.  Return nil if it doesn't exist or fails."
