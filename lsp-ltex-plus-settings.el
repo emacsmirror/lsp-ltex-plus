@@ -688,19 +688,19 @@ FMT is the format string, and ARGS are the arguments for it."
 ;;;; -- Dictionary Management --------------------------------------------------
 
 (defvar lsp-ltex-plus-dictionary-file
-  (expand-file-name "lsp-ltex-plus/stored-dictionary.eld" user-emacs-directory)
+  (locate-user-emacs-file "lsp-ltex-plus/stored-dictionary.eld")
   "Path to the external dictionary file (plist format).")
 
 (defvar lsp-ltex-plus-enabled-rules-file
-  (expand-file-name "lsp-ltex-plus/enabled-rules.eld" user-emacs-directory)
+  (locate-user-emacs-file "lsp-ltex-plus/enabled-rules.eld")
   "Path to the external enabled rules file (plist format).")
 
 (defvar lsp-ltex-plus-disabled-rules-file
-  (expand-file-name "lsp-ltex-plus/disabled-rules.eld" user-emacs-directory)
+  (locate-user-emacs-file "lsp-ltex-plus/disabled-rules.eld")
   "Path to the external disabled rules file (plist format).")
 
 (defvar lsp-ltex-plus-hidden-false-positives-file
-  (expand-file-name "lsp-ltex-plus/hidden-false-positives.eld" user-emacs-directory)
+  (locate-user-emacs-file "lsp-ltex-plus/hidden-false-positives.eld")
   "Path to the external hidden false positives file (plist format).")
 
 (defun lsp-ltex-plus--load-plist (file-path)

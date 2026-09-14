@@ -93,17 +93,13 @@ so it must stay idempotent: nothing here accumulates."
   ;; TODO(2027-05): Remove this migration block (see
   ;; `lsp-ltex-plus--migrate-extensionless-file').
   (dolist (pair `((,lsp-ltex-plus-dictionary-file
-                   . ,(expand-file-name "lsp-ltex-plus/stored-dictionary.eld"
-                                        user-emacs-directory))
+                   . ,(locate-user-emacs-file "lsp-ltex-plus/stored-dictionary.eld"))
                   (,lsp-ltex-plus-enabled-rules-file
-                   . ,(expand-file-name "lsp-ltex-plus/enabled-rules.eld"
-                                        user-emacs-directory))
+                   . ,(locate-user-emacs-file "lsp-ltex-plus/enabled-rules.eld"))
                   (,lsp-ltex-plus-disabled-rules-file
-                   . ,(expand-file-name "lsp-ltex-plus/disabled-rules.eld"
-                                        user-emacs-directory))
+                   . ,(locate-user-emacs-file "lsp-ltex-plus/disabled-rules.eld"))
                   (,lsp-ltex-plus-hidden-false-positives-file
-                   . ,(expand-file-name "lsp-ltex-plus/hidden-false-positives.eld"
-                                        user-emacs-directory))))
+                   . ,(locate-user-emacs-file "lsp-ltex-plus/hidden-false-positives.eld"))))
     (lsp-ltex-plus--migrate-extensionless-file (car pair) (cdr pair)))
   (lsp-ltex-plus--load-external-settings)
   ;; Under debug, ask the server for its own trace of the exchange too.
