@@ -3,7 +3,7 @@
 ;; Author: Andrea Alberti <a.alberti82@gmail.com>
 ;; Maintainer: Andrea Alberti <a.alberti82@gmail.com>
 ;; Assisted-by: Claude:claude-opus-4-7
-;; Version: 1.0.1
+;; Version: 1.0.2
 ;; Package-Requires: ((emacs "29.1"))
 ;; Keywords: lsp, grammar, spelling, convenience
 ;; URL: https://github.com/ltex-plus/emacs-ltex-plus
