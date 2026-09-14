@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Changed
+- **The four external list files are now defcustoms.** `lsp-ltex-plus-dictionary-file`, `-enabled-rules-file`, `-disabled-rules-file` and `-hidden-false-positives-file` were plain `defvar`s: a `setq` worked, but they were absent from `M-x customize-group RET lsp-ltex-plus` and carried no type. Their project counterparts have always been defcustoms, so this only closes that gap; the defaults and the behaviour are unchanged. The defaults are now built with `locate-user-emacs-file` rather than `expand-file-name` against `user-emacs-directory`, which is the documented API and also copes with an old `~/.emacs.d` kept as a file.
+
 
 ## [1.0.1] - 2026-09-13
 
