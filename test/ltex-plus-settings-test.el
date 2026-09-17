@@ -503,5 +503,36 @@ server never skips."
   (with-temp-buffer
     (should (equal (plist-get (lsp-ltex-plus--settings-object) :enabled) ["plaintext"]))))
 
+(ert-deftest ltex-plus-settings-test-the-client-log-is-written-only-under-debug ()
+  "`lsp-ltex-plus--log' writes to `*lsp-ltex-plus log*', and only when asked.
+The buffer is the client's own record -- which buffer was checked, which
+was skipped and why -- and it is not created at all with the option
+off."
+  (let ((buffer "*lsp-ltex-plus log*"))
+    (when (get-buffer buffer) (kill-buffer buffer))
+    (let ((lsp-ltex-plus-debug nil))
+      (lsp-ltex-plus--log "nothing to see %s" 'here)
+      (should-not (get-buffer buffer)))
+    (let ((lsp-ltex-plus-debug t))
+      (lsp-ltex-plus--log "checked %s" "war-and-peace.org")
+      (should (get-buffer buffer))
+      (should (string-match-p "checked war-and-peace.org"
+                              (with-current-buffer buffer (buffer-string)))))
+    (kill-buffer buffer)))
+
+(ert-deftest ltex-plus-settings-test-debug-turns-on-nothing-else ()
+  "`lsp-ltex-plus-debug' writes the client log and does nothing further.
+It used to uncap the events buffer and ask the server for a trace as
+well; each of those has its own setting now, and a setting that quietly
+overrode another would be back where we started."
+  (let ((lsp-ltex-plus-debug t)
+        (lsp-ltex-plus-trace-server "off")
+        (lsp-ltex-plus-events-buffer-size 0)
+        (lsp-ltex-plus-server-log-file nil))
+    (lsp-ltex-plus--setup)
+    (should (equal lsp-ltex-plus-trace-server "off"))
+    (should (eql lsp-ltex-plus-events-buffer-size 0))
+    (should-not lsp-ltex-plus-server-log-file)))
+
 (provide 'ltex-plus-settings-test)
 ;;; ltex-plus-settings-test.el ends here
