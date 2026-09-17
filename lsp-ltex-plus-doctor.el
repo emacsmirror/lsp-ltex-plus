@@ -32,14 +32,17 @@
 
 (defcustom lsp-ltex-plus-doctor-samples
   '(("en-US" "English"
-     "Are you tired of silly spellling mistakes in you're notes? LTeX+ \
-finds them before your reviewer does, and this very sentance proves it.")
+     "Are you tired of silly spellling mistakes in you're notes? Find \
+them here, not in the commit message that outlives the code, or the \
+email you just sent to fourty people.")
     ("fr-FR" "French"
-     "Fatigué des fautes d'ortographe dans vos notes ? LTeX+ les trouve \
-avant votre relecteur, et cette phrase, avec tout ses fautes, le prouve.")
+     "Fatigué des fautes d'ortographe dans vos notes ? Autant les \
+trouver ici que dans le courriel que vous venez d'envoyer a quarante \
+personnes.")
     ("de-DE" "German"
-     "Müde von dummen Rechtschreibfelern in Ihren Notizen? LTeX+ findet \
-sie vor Ihrem Korrektor, und dieser Satz ist absichtlick falsch."))
+     "Müde von dummen Rechtschreibfelern in Ihren Notizen? Besser hier \
+gefunden als in der Commit-Nachricht, die unwiederruflich in der \
+Historie bleibt."))
   "Sample texts the doctor has the server check, one per language.
 Each entry is (LANGUAGE LABEL TEXT).  LANGUAGE is an `ltex.language\='
 code, which the doctor puts in a magic comment so that one document can

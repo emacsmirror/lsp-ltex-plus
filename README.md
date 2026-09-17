@@ -635,22 +635,24 @@ Below the report the doctor checks itself, under an `* Examples` heading. Three 
 ```org
 # LTeX: enabled=true language=en-US dictionary+=LTeX
 ** English (en-US, your language)
-  Are you tired of silly spellling mistakes in you're notes? LTeX+ finds
-  them before your reviewer does, and this very sentance proves it.
+  Are you tired of silly spellling mistakes in you're notes? Find them
+  here, not in the commit message that outlives the code, or the email
+  you just sent to fourty people.
 
   Success: spelling mistakes were detected in this paragraph.
 
 # LTeX: language=fr-FR dictionary+=LTeX
 ** French
-  Fatigué des fautes d'ortographe dans vos notes ? LTeX+ les trouve
-  avant votre relecteur, et cette phrase, avec tout ses fautes, le prouve.
+  Fatigué des fautes d'ortographe dans vos notes ? Autant les trouver
+  ici que dans le courriel que vous venez d'envoyer a quarante personnes.
 
   Success: spelling mistakes were detected in this paragraph.
 
 # LTeX: language=de-DE dictionary+=LTeX
 ** German
-  Müde von dummen Rechtschreibfelern in Ihren Notizen? LTeX+ findet sie
-  vor Ihrem Korrektor, und dieser Satz ist absichtlick falsch.
+  Müde von dummen Rechtschreibfelern in Ihren Notizen? Besser hier
+  gefunden als in der Commit-Nachricht, die unwiederruflich in der
+  Historie bleibt.
 
   Success: spelling mistakes were detected in this paragraph.
 ```
