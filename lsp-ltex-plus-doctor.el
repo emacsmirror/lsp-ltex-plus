@@ -70,6 +70,13 @@ the server a model load, about ten seconds the first time."
                        (string :tag "Sample text")))
   :group 'lsp-ltex-plus)
 
+(defconst lsp-ltex-plus-doctor-fill-column 72
+  "Column the report is written to, and filled at.
+The prose carries its own line breaks at this width; the samples, which
+come from a setting as one long string, are filled to it.  The buffer
+is given it as `fill-column\=', so that a paragraph the reader refills
+after an edit keeps the width of the page around it.")
+
 (defconst lsp-ltex-plus-doctor-timeout 30
   "Seconds after which a section with no findings says so.
 Long enough for a language model to load on a cold server, short enough
@@ -659,8 +666,7 @@ after the magic comment that disabled it for the report."
       (insert "  " text "\n")
       ;; Filled, so that the sample reads in a plain window: the doctor
       ;; buffer is not one the user came to configure line wrapping for.
-      (let ((fill-column 72)
-            (fill-prefix "  "))
+      (let ((fill-prefix "  "))
         (fill-region beg (point)))
       ;; Insertion type nil on both markers: the sections after this one
       ;; are inserted at exactly this point, and an end marker that
@@ -940,6 +946,7 @@ reads the magic comments in it.  The language id is inherited through
   ;; still one keystroke away.
   (setq-local org-pretty-entities nil)
   (setq-local org-link-descriptive t)
+  (setq-local fill-column lsp-ltex-plus-doctor-fill-column)
   ;; The buffer visits no file, and a user who switched file-less
   ;; checking off did not mean this buffer.  Buffer-local rather than a
   ;; binding around the call: it has to hold for every later check too,
