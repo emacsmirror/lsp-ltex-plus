@@ -149,7 +149,7 @@ The mode declines when no server can be found; a buffer that then said
 it was waiting would be waiting for something nobody sent."
   (ltex-plus-doctor-test--with-report
     (should-not lsp-ltex-plus-mode)
-    (should (string-match-p "LTeX\\+ sent nothing"
+    (should (string-match-p "nothing was sent to the server"
                             (substring-no-properties
                              (overlay-get lsp-ltex-plus-doctor--overall
                                           'after-string))))
@@ -317,6 +317,33 @@ the checker on the samples."
     (goto-char (point-min))
     (search-forward "Executable")
     (should-error (insert "x") :type 'text-read-only)))
+
+(ert-deftest ltex-plus-doctor-test-a-project-s-settings-reach-the-report ()
+  "Called inside a project, the doctor reports that project's settings.
+The buffer visits no file, so Emacs applies no directory-local values
+to it by itself -- but a reader who runs the doctor inside a project is
+asking about that project, and the samples are then checked the way the
+project's own buffers are."
+  (let* ((directory (file-name-as-directory (make-temp-file "ltex-doctor-" t)))
+         (buffer (generate-new-buffer "*ltex-plus-doctor-project*"))
+         (enable-local-variables :all))
+    (unwind-protect
+        (progn
+          (with-temp-file (expand-file-name ".dir-locals.el" directory)
+            (insert "((nil . ((lsp-ltex-plus-language . \"de-DE\"))))\n"))
+          (with-current-buffer buffer
+            (setq default-directory directory)
+            (lsp-ltex-plus-doctor-mode)
+            (lsp-ltex-plus-doctor--fill)
+            (should (equal lsp-ltex-plus-language "de-DE"))
+            ;; And the sample for that language leads, as it does for a
+            ;; language set globally.
+            (should (equal (plist-get (car lsp-ltex-plus-doctor--sections)
+                                      :language)
+                           "de-DE"))
+            (lsp-ltex-plus-doctor--cancel-timer)))
+      (kill-buffer buffer)
+      (delete-directory directory t))))
 
 ;;;; -- On a server -------------------------------------------------------------
 

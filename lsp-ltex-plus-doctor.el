@@ -283,7 +283,13 @@ handshake complete")
 
 (defun lsp-ltex-plus-doctor--buffer-line ()
   "Return what is in force in the doctor buffer itself."
-  (list (cons "Language id"
+  (list (cons "Directory"
+              (concat (lsp-ltex-plus-doctor--path
+                       (abbreviate-file-name default-directory))
+                      (if (dir-locals-find-file default-directory)
+                          " -- its =.dir-locals.el= is in force below"
+                        " -- no =.dir-locals.el= applies")))
+        (cons "Language id"
               (concat (lsp-ltex-plus--language-id)
                       (lsp-ltex-plus-doctor--options
                        "lsp-ltex-plus-major-modes")))
@@ -479,13 +485,15 @@ such a script can export a JAVA_HOME of its own.")))
   (lsp-ltex-plus-doctor--insert-section "Environment"
                                         (lsp-ltex-plus-doctor--environment-line))
   (insert "* Settings for one project only\n"
-          "  This report shows the global settings.  To check one project\n"
-          "  with different settings -- another language, a longer\n"
-          "  dictionary -- write those settings into a =.dir-locals.el=\n"
-          "  file in the top directory of the project.  LTeX+ answers the\n"
-          "  server from the buffer being checked, so every buffer under\n"
-          "  that directory is checked with the settings of the project.\n"
-          "  This report never shows the settings of a project.\n\n"))
+          "  The settings above are the ones in force for the directory this\n"
+          "  report was called from.  If a project needs different settings --\n"
+          "  another language, a dictionary of words that belong to it, a rule\n"
+          "  switched off -- write those settings into a =.dir-locals.el= file\n"
+          "  in the top directory of the project.  Most settings are read in\n"
+          "  the buffer being checked ([[https://github.com/ltex-plus/emacs-\
+ltex-plus/blob/main/README.md][the README]] says which), so every buffer\n"
+          "  under that directory is checked with the project's settings, and\n"
+          "  so is this report when you call it from there.\n\n"))
 
 (defun lsp-ltex-plus-doctor--make-overlay ()
   "Return a new overlay, on the heading just inserted, carrying a status."
@@ -565,7 +573,7 @@ after the magic comment that disabled it for the report."
                              lsp-ltex-plus-doctor--answered)
                      'face 'success))
         ((not lsp-ltex-plus-mode)
-         (propertize "  LTeX+ sent nothing" 'face 'error))
+         (propertize "  nothing was sent to the server" 'face 'error))
         (t (propertize "  waiting for the first answer" 'face 'warning))))
 
 (defun lsp-ltex-plus-doctor--status (section)
@@ -585,15 +593,15 @@ is not taken for another line of the sample."
             (propertize "Success: spelling mistakes were detected in this \
 paragraph." 'face 'success))
            ((not lsp-ltex-plus-mode)
-            (propertize "Not checked: LTeX+ sent nothing.  See the Server \
-section above." 'face 'error))
+            (propertize "Not checked: nothing was sent to the server.  See \
+the Server section above." 'face 'error))
            ((plist-get section :timed-out)
             (propertize (format "No answer after %d seconds: the server may \
 have run out of memory while loading this language.  Raise \
 ~lsp-ltex-plus-java-max-heap~." lsp-ltex-plus-doctor-timeout)
                         'face 'error))
-           (t (propertize "Waiting for LTeX+ to answer.  Loading a language \
-model takes a few seconds." 'face 'warning)))
+           (t (propertize "Waiting for the server to answer.  Loading a \
+language model takes a few seconds." 'face 'warning)))
           "\n"))
 
 (defun lsp-ltex-plus-doctor--show-status ()
@@ -664,13 +672,24 @@ where a letter is a command and where it is a letter."
   ;; example would inherit the read-only property and be refused.
   (put-text-property (1- end) end 'rear-nonsticky '(read-only)))
 
+(defun lsp-ltex-plus-doctor--project-settings ()
+  "Apply the directory-local settings of `default-directory\=' here.
+This buffer visits no file, so Emacs applies none by itself.  The
+doctor is called from somewhere, though, and a reader who calls it
+inside a project is asking about that project: its language, its
+dictionary, its rules.  Read again at every refresh, so that an edited
+=.dir-locals.el= takes effect on `g\='."
+  (hack-dir-local-variables-non-file-buffer))
+
 (defun lsp-ltex-plus-doctor--fill ()
   "Replace the contents of the current doctor buffer with a fresh report.
 The report first, kept out of the check by a magic comment, then one
 section per sample, each switching the language for what follows it."
   (let ((inhibit-read-only t)
-        (samples (lsp-ltex-plus-doctor--ordered-samples))
-        report-end)
+        report-end
+        samples)
+    (lsp-ltex-plus-doctor--project-settings)
+    (setq samples (lsp-ltex-plus-doctor--ordered-samples))
     (lsp-ltex-plus-doctor--cancel-timer)
     (lsp-ltex-plus-doctor--delete-overlays)
     (setq lsp-ltex-plus-doctor--sections nil)
@@ -684,17 +703,19 @@ section per sample, each switching the language for what follows it."
     (setq lsp-ltex-plus-doctor--overall
           (lsp-ltex-plus-doctor--make-overlay))
     (insert "\n"
-            "  Three paragraphs follow, each one wrong on purpose and each\n"
-            "  checked in its own language.  The line above each paragraph\n"
-            "  is a [[https://ltex-plus.github.io/ltex-plus/advanced-usage.\
-html#magic-comments][magic comment]]: the comment sets the language for\n"
-            "  the text below it, and adds the name LTeX to the dictionary\n"
-            "  of that language, so that the name of this package is not\n"
-            "  underlined as a misspelling.  Copy either setting into your\n"
-            "  own documents.\n\n"
-            "  LTeX+ checks the whole buffer in one go, so a language used\n"
-            "  for the first time keeps every heading waiting while the\n"
-            "  server loads a language model, which takes a few seconds.\n\n")
+            "  Three paragraphs follow, each one containing grammatical and\n"
+            "  spelling mistakes on purpose, and each checked in its own\n"
+            "  language.  The line above each paragraph is a\n"
+            "  [[https://ltex-plus.github.io/ltex-plus/advanced-usage.html\
+#magic-comments][magic comment]]: it sets the language for the text below\n"
+            "  it, and adds the word LTeX to the dictionary of that language\n"
+            "  so that the word is not underlined as a misspelling.  A\n"
+            "  dictionary is kept per language, which is why the word is added\n"
+            "  again in each comment.  Both settings are worth copying into\n"
+            "  documents of your own.\n\n"
+            "  The server checks the whole buffer in one go, so a language\n"
+            "  used for the first time keeps every paragraph waiting while a\n"
+            "  language model loads, which takes a few seconds.\n\n")
     (setq lsp-ltex-plus-doctor--answered nil)
     (setq lsp-ltex-plus-doctor--started (float-time))
     (setq report-end (point-marker))
