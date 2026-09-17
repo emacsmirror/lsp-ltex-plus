@@ -155,8 +155,8 @@ set ~lsp-ltex-plus-ls-plus-executable~"
                              (expand-file-name lsp-ltex-plus-java-path)))
                   "not set by Emacs"))
           (cons "Java"
-                (format "%s -- what Emacs resolves; the launcher script can \
-export a JAVA_HOME of its own, and often does"
+                (format "%s -- resolved by Emacs, not guaranteed: the \
+launcher script can export a JAVA_HOME of its own"
                         (or (lsp-ltex-plus-doctor--java) "none found")))
           (cons "Heap"
                 (let ((options (lsp-ltex-plus--heap-options)))
