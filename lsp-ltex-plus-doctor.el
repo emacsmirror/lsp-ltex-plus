@@ -276,7 +276,7 @@ handshake complete")
           ;; connection the honest answer is the same "--" as the root
           ;; beside it: a plain 0 reads as "the server has nothing open",
           ;; which is a different statement from "there is no server".
-          (cons "Documents open"
+          (cons "Documents spell-checked"
                 (if connection
                     (lsp-ltex-plus-doctor--documents-value)
                   "--")))))
@@ -442,7 +442,8 @@ rows: a caveat that has to be said once belongs under the section, not
 in the middle of a line the reader is scanning."
   (insert "* " title "\n")
   (pcase-dolist (`(,label . ,value) rows)
-    (insert (format "  - %-22s :: " label))
+    ;; Wide enough for the longest label, so every `::' lines up.
+    (insert (format "  - %-23s :: " label))
     (lsp-ltex-plus-doctor--insert-faced value)
     (insert "\n"))
   (when notes

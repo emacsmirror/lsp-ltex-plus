@@ -628,7 +628,7 @@ All variables mentioned below are standard Emacs customization options. If you u
 
 ### Start here: `M-x lsp-ltex-plus-doctor`
 
-One buffer that answers *is LTeX+ working, and with what?* The report names the server binary Emacs found, the version that server reports and the version number compared against the minimum, whether the connection is up and which buffers are open on it, the settings every check is made with, which logs are switched on, and the Emacs, `jsonrpc` and `lsp-ltex-plus` versions. Copy the whole buffer with `C-x h M-w` and a bug report is written.
+One buffer that answers *is LTeX+ working, and with what?* The report names the server binary Emacs found, the version that server reports and the version number compared against the minimum, whether the connection is up and which buffers it is checking, the settings every check is made with, which logs are switched on, and the Emacs, `jsonrpc` and `lsp-ltex-plus` versions. Copy the whole buffer with `C-x h M-w` and a bug report is written.
 
 Below the report the doctor checks itself, under an `* Examples` heading. Three paragraphs follow, each one wrong on purpose and each checked in its own language; the line above each paragraph is a [magic comment](https://ltex-plus.github.io/ltex-plus/advanced-usage.html#magic-comments) that sets the language for the text below it and adds the name `LTeX` to the dictionary of that language, so the package name is not underlined in its own doctor:
 
