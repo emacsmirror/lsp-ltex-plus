@@ -363,19 +363,21 @@ after the magic comment that disabled it for the report."
     (insert (format "# LTeX: %slanguage=%s dictionary+=LTeX\n"
                     (if first "enabled=true " "") language))
     (insert "** " label "\n")
-    (let ((overlay (lsp-ltex-plus-doctor--make-overlay))
-          (beg (point-marker)))
+    (let ((beg (point-marker)))
       (insert "  " text "\n")
       ;; Filled, so that the sample reads in a plain window: the doctor
       ;; buffer is not one the user came to configure line wrapping for.
       (let ((fill-column 72)
             (fill-prefix "  "))
         (fill-region beg (point)))
-      (insert "\n")
-      ;; Insertion type nil, both markers: the sections after this one
+      ;; Insertion type nil on both markers: the sections after this one
       ;; are inserted at exactly this point, and an end marker that
-      ;; advanced with them would swallow their findings.
-      (let ((end (point-marker)))
+      ;; advanced with them would swallow their findings.  The status
+      ;; overlay hangs off the paragraph's last newline, so the sentence
+      ;; about the paragraph is displayed under the paragraph.
+      (let ((end (point-marker))
+            (overlay (lsp-ltex-plus-doctor--make-overlay)))
+        (insert "\n")
         (list :language language :label label
               :beg beg :end end :overlay overlay :found nil)))))
 
@@ -390,20 +392,27 @@ after the magic comment that disabled it for the report."
         (t (propertize "  waiting for the first answer" 'face 'shadow))))
 
 (defun lsp-ltex-plus-doctor--status (section)
-  "Return the status string SECTION should be showing."
-  (let ((found (plist-get section :found)))
-    (cond
-     (found (propertize "  mistakes found" 'face 'success))
-     ((not lsp-ltex-plus-mode)
-      (propertize "  not checked: LTeX+ sent nothing.  See the Server section \
-above." 'face 'error))
-     ((plist-get section :timed-out)
-      (propertize (format "  no answer after %d seconds: the server may have \
-run out of memory while loading this language.  Raise \
+  "Return the line to show under SECTION\='s paragraph.
+A sentence below the text the sentence is about, rather than a tag
+beside the heading: the reader has just read the paragraph and is
+looking at the end of it.  Set off by a blank line, so that the verdict
+is not taken for another line of the sample."
+  (concat "\n  "
+          (cond
+           ((plist-get section :found)
+            (propertize "Success: spelling mistakes were detected in this \
+paragraph." 'face 'success))
+           ((not lsp-ltex-plus-mode)
+            (propertize "Not checked: LTeX+ sent nothing.  See the Server \
+section above." 'face 'error))
+           ((plist-get section :timed-out)
+            (propertize (format "No answer after %d seconds: the server may \
+have run out of memory while loading this language.  Raise \
 ~lsp-ltex-plus-java-max-heap~." lsp-ltex-plus-doctor-timeout)
-                  'face 'warning))
-     (t (propertize "  waiting for LTeX+ to answer.  Loading a language \
-model takes a few seconds." 'face 'shadow)))))
+                        'face 'warning))
+           (t (propertize "Waiting for LTeX+ to answer.  Loading a language \
+model takes a few seconds." 'face 'shadow)))
+          "\n"))
 
 (defun lsp-ltex-plus-doctor--show-status ()
   "Put each section\='s status on its heading.

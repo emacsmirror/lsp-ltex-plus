@@ -118,8 +118,9 @@ finding in the buffer."
                 (ltex-plus-doctor-test--diagnostic-on "Rechtschreibfelern")))
     (lsp-ltex-plus-doctor--on-diagnostics (current-buffer))
     (should (equal (ltex-plus-doctor-test--status "English (en-US, your language)")
-                   "  mistakes found"))
-    (should (equal (ltex-plus-doctor-test--status "German") "  mistakes found"))
+                   "\n  Success: spelling mistakes were detected in this \
+paragraph.\n"))
+    (should (string-match-p "Success" (ltex-plus-doctor-test--status "German")))
     (should (string-match-p "waiting"
                             (ltex-plus-doctor-test--status "French")))))
 
@@ -130,10 +131,10 @@ has not come -- or is not coming.  Saying nothing would read as a pass
 and send the user looking for a problem that is not there."
   (ltex-plus-doctor-test--with-report
     (ltex-plus-doctor-test--pretend-checked)
-    (should (string-match-p "waiting" (ltex-plus-doctor-test--status "German")))
+    (should (string-match-p "Waiting" (ltex-plus-doctor-test--status "German")))
     (lsp-ltex-plus-doctor--give-up (current-buffer))
     (let ((status (ltex-plus-doctor-test--status "German")))
-      (should (string-match-p "no answer" status))
+      (should (string-match-p "No answer" status))
       (should (string-match-p "lsp-ltex-plus-java-max-heap" status)))))
 
 (ert-deftest ltex-plus-doctor-test-an-unchecked-buffer-says-so ()
@@ -146,7 +147,7 @@ it was waiting would be waiting for something nobody sent."
                             (substring-no-properties
                              (overlay-get lsp-ltex-plus-doctor--overall
                                           'after-string))))
-    (should (string-match-p "not checked"
+    (should (string-match-p "Not checked"
                             (ltex-plus-doctor-test--status "French")))))
 
 (ert-deftest ltex-plus-doctor-test-the-timing-is-for-the-whole-check ()
@@ -164,9 +165,8 @@ the server."
              "checked in [0-9.]+ s"
              (substring-no-properties
               (overlay-get lsp-ltex-plus-doctor--overall 'after-string))))
-    (should (equal (ltex-plus-doctor-test--status
-                    "English (en-US, your language)")
-                   "  mistakes found"))))
+    (should (string-match-p "Success" (ltex-plus-doctor-test--status
+                                      "English (en-US, your language)")))))
 
 (ert-deftest ltex-plus-doctor-test-a-refresh-leaves-other-overlays-alone ()
   "Writing the report again deletes the doctor's overlays and no others.

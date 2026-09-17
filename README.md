@@ -634,26 +634,32 @@ Below the report the doctor checks itself, under an `* Examples` heading. Three 
 
 ```org
 # LTeX: enabled=true language=en-US dictionary+=LTeX
-** English (en-US, your language)          mistakes found
+** English (en-US, your language)
   Are you tired of silly spellling mistakes in you're notes? LTeX+ finds
   them before your reviewer does, and this very sentance proves it.
 
+  Success: spelling mistakes were detected in this paragraph.
+
 # LTeX: language=fr-FR dictionary+=LTeX
-** French                                  mistakes found
+** French
   Fatigué des fautes d'ortographe dans vos notes ? LTeX+ les trouve
   avant votre relecteur, et cette phrase, avec tout ses fautes, le prouve.
 
+  Success: spelling mistakes were detected in this paragraph.
+
 # LTeX: language=de-DE dictionary+=LTeX
-** German                                  mistakes found
+** German
   Müde von dummen Rechtschreibfelern in Ihren Notizen? LTeX+ findet sie
   vor Ihrem Korrektor, und dieser Satz ist absichtlick falsch.
+
+  Success: spelling mistakes were detected in this paragraph.
 ```
 
 Those two magic-comment settings are worth copying into your own documents — a language for one file, a word for one language's dictionary — and the doctor is a working example of both.
 
-A heading says `mistakes found`, never how many: how many mistakes come back depends on the LanguageTool behind the server, since a Premium account or your own LanguageTool server finds mistakes the bundled one does not.
+The line under each paragraph is the verdict for that paragraph: `Success` once mistakes have come back, `Waiting for LTeX+ to answer` while the check is out. No count is given — how many mistakes come back depends on the LanguageTool behind the server, since a Premium account or your own LanguageTool server finds mistakes the bundled one does not. The verdict is an overlay, not text, so nothing the doctor displays is part of the document being checked.
 
-**A heading never goes quiet to mean "nothing wrong"**, because every sample is wrong on purpose: a heading with no count says `waiting for LTeX+ to answer` while the check is out, and after thirty seconds `no answer after 30 seconds: the server may have run out of memory while loading this language`, which names `lsp-ltex-plus-java-max-heap` as the setting to raise. LTeX+ checks the whole buffer in one go, so a language used for the first time keeps every heading waiting while the server loads a language model — a few seconds.
+**A paragraph never goes quiet to mean "nothing wrong"**, because every sample is wrong on purpose: after thirty seconds with no answer the verdict becomes `No answer after 30 seconds: the server may have run out of memory while loading this language`, which names `lsp-ltex-plus-java-max-heap` as the setting to raise. LTeX+ checks the whole buffer in one go, so a language used for the first time keeps every heading waiting while the server loads a language model — a few seconds.
 
 Keys in the doctor buffer: `g` writes the report again, `r` restarts the server, `q` buries the buffer, `C-c "` opens the suggestions menu for the mistake at point. To check a fourth language, add an entry to `lsp-ltex-plus-doctor-samples`.
 
