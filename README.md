@@ -661,7 +661,9 @@ The line under each paragraph is the verdict for that paragraph, coloured like a
 
 **A paragraph never goes quiet to mean "nothing wrong"**, because every sample is wrong on purpose: after thirty seconds with no answer the verdict becomes `No answer after 30 seconds: the server may have run out of memory while loading this language`, which names `lsp-ltex-plus-java-max-heap` as the setting to raise. LTeX+ checks the whole buffer in one go, so a language used for the first time keeps every heading waiting while the server loads a language model — a few seconds.
 
-Keys in the doctor buffer: `g` writes the report again, `r` restarts the server, `q` buries the buffer, `C-c "` opens the suggestions menu for the mistake at point. To check a fourth language, add an entry to `lsp-ltex-plus-doctor-samples`.
+Keys in the doctor buffer: `g` writes the report again, `r` restarts the server, `v` shows or hides the setting behind each value, `q` buries the buffer. Each value names its setting — `Idle delay :: 0.5 s (lsp-ltex-plus-idle-delay)` — but the name is hidden until you press `v`, so the report reads as answers rather than as variables.
+
+**The report is read-only; the examples are not.** Those single letters are the report's keys, and in the examples they type themselves, so the samples are yours to edit: break them further, write your own sentence, and watch what comes back. `C-c "` opens the suggestions menu on the mistake at point and applies a replacement there — which makes this buffer the place to learn the menu before using it on your own writing. To check a fourth language, add an entry to `lsp-ltex-plus-doctor-samples`.
 
 ### Server Not Found
 

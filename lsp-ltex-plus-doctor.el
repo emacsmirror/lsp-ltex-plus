@@ -85,6 +85,19 @@ The clock each section\='s timing is measured from.")
 (defvar-local lsp-ltex-plus-doctor--timer nil
   "The timer that gives up waiting, or nil.")
 
+(defvar-local lsp-ltex-plus-doctor--options-hidden t
+  "Whether the setting behind each value is hidden.  Toggled by `v\='.")
+
+(defun lsp-ltex-plus-doctor--options (&rest names)
+  "Return NAMES, the settings behind a value, as text that `v\=' can hide.
+Carries `lsp-ltex-plus-doctor-options\=', which the insertion turns into
+an overlay: a reader wants the value, and only sometimes the name of
+the thing that sets it."
+  (propertize (format " (%s)"
+                      (mapconcat (lambda (name) (format "~%s~" name))
+                                 names ", "))
+              'lsp-ltex-plus-doctor-options t))
+
 (defvar-local lsp-ltex-plus-doctor--overall nil
   "Overlay carrying how long the whole check took, or nil.")
 
@@ -144,12 +157,13 @@ warning is the user\='s decision rather than a fault."
                     (lsp-ltex-plus--connection-server-info connection)))
          (version (and info (plist-get info :version))))
     (list (cons "Executable"
-                (format "%s (~lsp-ltex-plus-ls-plus-executable~, \
-~lsp-ltex-plus-ltex-ls-path~)"
-                        (if executable
+                (concat (if executable
                             (lsp-ltex-plus-doctor--path executable)
                           (format "not found -- =%s= is not on ~exec-path~"
-                                  lsp-ltex-plus-ls-plus-executable))))
+                                  lsp-ltex-plus-ls-plus-executable))
+                        (lsp-ltex-plus-doctor--options
+                         "lsp-ltex-plus-ls-plus-executable"
+                         "lsp-ltex-plus-ltex-ls-path")))
           (cons "Full version label"
                 (cond ((not connection) "no server is running")
                       (version (format "%s %s"
@@ -160,17 +174,21 @@ warning is the user\='s decision rather than a fault."
                 (or (lsp-ltex-plus--version-number version)
                     (if connection "none" "--")))
           (cons "Minimum version"
-                (format "%s -- %s (~lsp-ltex-plus-minimum-server-version~, \
-~lsp-ltex-plus-require-minimum-server-version~)"
-                        lsp-ltex-plus-minimum-server-version
-                        (lsp-ltex-plus-doctor--requirement connection version)))
+                (concat (format "%s -- %s"
+                                lsp-ltex-plus-minimum-server-version
+                                (lsp-ltex-plus-doctor--requirement
+                                 connection version))
+                        (lsp-ltex-plus-doctor--options
+                         "lsp-ltex-plus-minimum-server-version"
+                         "lsp-ltex-plus-require-minimum-server-version")))
           (cons "JAVA_HOME"
-                (format "%s (~lsp-ltex-plus-java-path~)"
-                        (if lsp-ltex-plus-java-path
+                (concat (if lsp-ltex-plus-java-path
                             (lsp-ltex-plus-doctor--path
                              (directory-file-name
                               (expand-file-name lsp-ltex-plus-java-path)))
-                          "not set by Emacs")))
+                          "not set by Emacs")
+                        (lsp-ltex-plus-doctor--options
+                         "lsp-ltex-plus-java-path")))
           (cons "Java"
                 (format "%s [fn:java]"
                         (if (lsp-ltex-plus-doctor--java)
@@ -178,12 +196,13 @@ warning is the user\='s decision rather than a fault."
                              (lsp-ltex-plus-doctor--java))
                           "none found")))
           (cons "Heap"
-                (format "%s (~lsp-ltex-plus-java-initial-heap~, \
-~lsp-ltex-plus-java-max-heap~)"
-                        (let ((options (lsp-ltex-plus--heap-options)))
+                (concat (let ((options (lsp-ltex-plus--heap-options)))
                           (if options
                               (string-join options " ")
-                            "the JVM's own default")))))))
+                            "the JVM's own default"))
+                        (lsp-ltex-plus-doctor--options
+                         "lsp-ltex-plus-java-initial-heap"
+                         "lsp-ltex-plus-java-max-heap"))))))
 
 (defconst lsp-ltex-plus-doctor--documents-shown 5
   "How many open documents the report names before counting the rest.")
@@ -265,21 +284,22 @@ handshake complete")
 (defun lsp-ltex-plus-doctor--buffer-line ()
   "Return what is in force in the doctor buffer itself."
   (list (cons "Language id"
-              (format "%s (~lsp-ltex-plus-major-modes~)"
-                      (lsp-ltex-plus--language-id)))
+              (concat (lsp-ltex-plus--language-id)
+                      (lsp-ltex-plus-doctor--options
+                       "lsp-ltex-plus-major-modes")))
         (cons "Front-end"
-              (cond ((null lsp-ltex-plus--attached-provider)
-                     (format "none: this buffer is not being checked.  \
-Your setting asks for %s (~lsp-ltex-plus-diagnostics-provider~)"
-                             lsp-ltex-plus-diagnostics-provider))
-                    ((eq lsp-ltex-plus--attached-provider
-                         lsp-ltex-plus-diagnostics-provider)
-                     (format "%s (~lsp-ltex-plus-diagnostics-provider~)"
-                             lsp-ltex-plus--attached-provider))
-                    (t (format "%s.  Your setting asks for %s, which this \
-Emacs does not have (~lsp-ltex-plus-diagnostics-provider~)"
-                               lsp-ltex-plus--attached-provider
-                               lsp-ltex-plus-diagnostics-provider))))
+              (concat
+               (cond ((null lsp-ltex-plus--attached-provider)
+                      (format "none: this buffer is not being checked.  \
+Your setting asks for %s" lsp-ltex-plus-diagnostics-provider))
+                     ((eq lsp-ltex-plus--attached-provider
+                          lsp-ltex-plus-diagnostics-provider)
+                      (format "%s" lsp-ltex-plus--attached-provider))
+                     (t (format "%s.  Your setting asks for %s, which this \
+Emacs does not have" lsp-ltex-plus--attached-provider
+                        lsp-ltex-plus-diagnostics-provider)))
+               (lsp-ltex-plus-doctor--options
+                "lsp-ltex-plus-diagnostics-provider")))
         (cons "Checked" (if lsp-ltex-plus-mode "yes" "no"))))
 
 (defun lsp-ltex-plus-doctor--file-link (file)
@@ -316,18 +336,21 @@ files the entries come from, named and followed."
                                   (if (= count 1) (substring unit 0 -1) unit))))))
   (dolist (which '((:global-file . "file") (:project-file . "project file")))
     (let ((variable (lsp-ltex-plus--kind-get kind (car which))))
-      (insert (format "    - %-12s :: %s (~%s~)\n"
-                      (cdr which)
-                      (lsp-ltex-plus-doctor--file-link (symbol-value variable))
-                      variable)))))
+      (insert (format "    - %-12s :: " (cdr which)))
+      (lsp-ltex-plus-doctor--insert-faced
+       (concat (lsp-ltex-plus-doctor--file-link (symbol-value variable))
+               (lsp-ltex-plus-doctor--options (symbol-name variable))))
+      (insert "\n"))))
 
 (defun lsp-ltex-plus-doctor--settings-line ()
   "Return the settings a check is made with."
   (list (cons "Language"
-              (format "%s (~lsp-ltex-plus-language~)" lsp-ltex-plus-language))
+              (concat lsp-ltex-plus-language
+                      (lsp-ltex-plus-doctor--options "lsp-ltex-plus-language")))
         (cons "Idle delay"
-              (format "%s s (~lsp-ltex-plus-idle-delay~)"
-                      lsp-ltex-plus-idle-delay))))
+              (concat (format "%s s" lsp-ltex-plus-idle-delay)
+                      (lsp-ltex-plus-doctor--options
+                       "lsp-ltex-plus-idle-delay")))))
 
 (defun lsp-ltex-plus-doctor--insert-lists ()
   "Insert the four language-keyed lists, language by language."
@@ -342,31 +365,35 @@ files the entries come from, named and followed."
 (defun lsp-ltex-plus-doctor--logging-line ()
   "Return where each of the four records is going, if anywhere."
   (list (cons "Client log"
-              (format "%s (~lsp-ltex-plus-debug~)"
-                      (if lsp-ltex-plus-debug
+              (concat (if lsp-ltex-plus-debug
                           "on, in *lsp-ltex-plus log*"
-                        "off")))
+                        "off")
+                      (lsp-ltex-plus-doctor--options "lsp-ltex-plus-debug")))
         (cons "Wire record"
-              (format "%s (~lsp-ltex-plus-events-buffer-size~, \
-~lsp-ltex-plus-events-buffer-format~)"
-                      (cond ((eql lsp-ltex-plus-events-buffer-size 0) "off")
-                            ((null lsp-ltex-plus-events-buffer-size)
-                             (format "unlimited, %s, in *ltex-ls-plus events*"
-                                     lsp-ltex-plus-events-buffer-format))
-                            (t (format "%d bytes, %s, in *ltex-ls-plus events*"
-                                       lsp-ltex-plus-events-buffer-size
-                                       lsp-ltex-plus-events-buffer-format)))))
+              (concat
+               (cond ((eql lsp-ltex-plus-events-buffer-size 0) "off")
+                     ((null lsp-ltex-plus-events-buffer-size)
+                      (format "unlimited, %s, in *ltex-ls-plus events*"
+                              lsp-ltex-plus-events-buffer-format))
+                     (t (format "%d bytes, %s, in *ltex-ls-plus events*"
+                                lsp-ltex-plus-events-buffer-size
+                                lsp-ltex-plus-events-buffer-format)))
+               (lsp-ltex-plus-doctor--options
+                "lsp-ltex-plus-events-buffer-size"
+                "lsp-ltex-plus-events-buffer-format")))
         (cons "Server log file"
-              (format "%s (~lsp-ltex-plus-server-log-file~)"
-                      (if lsp-ltex-plus-server-log-file
+              (concat (if lsp-ltex-plus-server-log-file
                           ;; Verbatim, not a link: the name may hold the
                           ;; server's `${PID}', which is no file yet.
                           (lsp-ltex-plus-doctor--path
                            lsp-ltex-plus-server-log-file)
-                        "none")))
+                        "none")
+                      (lsp-ltex-plus-doctor--options
+                       "lsp-ltex-plus-server-log-file")))
         (cons "Server log level"
-              (format "%s (~lsp-ltex-plus-ltex-ls-log-level~)"
-                      lsp-ltex-plus-ltex-ls-log-level))))
+              (concat lsp-ltex-plus-ltex-ls-log-level
+                      (lsp-ltex-plus-doctor--options
+                       "lsp-ltex-plus-ltex-ls-log-level")))))
 
 (defun lsp-ltex-plus-doctor--environment-line ()
   "Return the versions a bug report should carry."
@@ -385,18 +412,22 @@ As overlays, not as text: this buffer is fontified by org, and
 font-lock removes the `face\=' property from the text it fontifies, so a
 value coloured with `propertize\=' goes back to plain the moment the
 window is redisplayed.  An overlay is left alone."
-  (let ((start (point))
-        (pos 0))
+  (let ((start (point)))
     (insert string)
-    (while (< pos (length string))
-      (let ((next (or (next-single-property-change pos 'face string)
-                      (length string)))
-            (face (get-text-property pos 'face string)))
-        (when face
-          (let ((overlay (make-overlay (+ start pos) (+ start next))))
-            (overlay-put overlay 'face face)
-            (overlay-put overlay 'lsp-ltex-plus-doctor t)))
-        (setq pos next)))))
+    (dolist (property '(face lsp-ltex-plus-doctor-options))
+      (let ((pos 0))
+        (while (< pos (length string))
+          (let ((next (or (next-single-property-change pos property string)
+                          (length string)))
+                (value (get-text-property pos property string)))
+            (when value
+              (let ((overlay (make-overlay (+ start pos) (+ start next))))
+                (overlay-put overlay 'lsp-ltex-plus-doctor t)
+                (if (eq property 'face)
+                    (overlay-put overlay 'face value)
+                  (overlay-put overlay 'invisible
+                               'lsp-ltex-plus-doctor-options))))
+            (setq pos next)))))))
 
 (defun lsp-ltex-plus-doctor--insert-section (title rows &optional notes)
   "Insert an org heading TITLE followed by ROWS as a description list.
@@ -423,7 +454,11 @@ so none of it is offered to the server as prose."
           "#+options: toc:nil\n"
           "#+startup: entitiesplain\n\n"
           "  =g=  write this report again    =r=  restart the server\n"
-          "  =q=  bury this buffer           =C-c \"=  fix the mistake at point\n\n")
+          "  =v=  show the setting behind each value\n"
+          "  =q=  bury this buffer           =C-c \"=  fix the mistake at point\n\n"
+          "  The report is read-only, and those letters are its keys.  The\n"
+          "  examples at the end are yours: type in them, break them\n"
+          "  further, and watch what comes back.\n\n")
   (lsp-ltex-plus-doctor--insert-section
    "Server" (lsp-ltex-plus-doctor--server-line)
    '(("java" . "The java Emacs resolves, from JAVA_HOME when that is set
@@ -615,12 +650,25 @@ a later publish saying the same thing must not reset it."
     (cancel-timer lsp-ltex-plus-doctor--timer))
   (setq lsp-ltex-plus-doctor--timer nil))
 
+(defun lsp-ltex-plus-doctor--protect-report (end)
+  "Make the report, everything before END, read-only and command-bound.
+The report is generated and the next refresh throws it away, so an edit
+there is a mistake; the examples after END are prose the reader is
+invited to change.  The same property tells `lsp-ltex-plus-doctor-key\='
+where a letter is a command and where it is a letter."
+  (add-text-properties (point-min) end
+                       '(read-only t lsp-ltex-plus-doctor-report t))
+  ;; Without this, a character typed at the very start of the first
+  ;; example would inherit the read-only property and be refused.
+  (put-text-property (1- end) end 'rear-nonsticky '(read-only)))
+
 (defun lsp-ltex-plus-doctor--fill ()
   "Replace the contents of the current doctor buffer with a fresh report.
 The report first, kept out of the check by a magic comment, then one
 section per sample, each switching the language for what follows it."
   (let ((inhibit-read-only t)
-        (samples (lsp-ltex-plus-doctor--ordered-samples)))
+        (samples (lsp-ltex-plus-doctor--ordered-samples))
+        report-end)
     (lsp-ltex-plus-doctor--cancel-timer)
     (lsp-ltex-plus-doctor--delete-overlays)
     (setq lsp-ltex-plus-doctor--sections nil)
@@ -647,6 +695,7 @@ html#magic-comments][magic comment]]: the comment sets the language for\n"
             "  server loads a language model, which takes a few seconds.\n\n")
     (setq lsp-ltex-plus-doctor--answered nil)
     (setq lsp-ltex-plus-doctor--started (float-time))
+    (setq report-end (point-marker))
     (let ((first t))
       (dolist (sample samples)
         (push (lsp-ltex-plus-doctor--insert-sample sample first)
@@ -654,6 +703,7 @@ html#magic-comments][magic comment]]: the comment sets the language for\n"
         (setq first nil)))
     (setq lsp-ltex-plus-doctor--sections
           (nreverse lsp-ltex-plus-doctor--sections))
+    (lsp-ltex-plus-doctor--protect-report report-end)
     (lsp-ltex-plus-doctor--show-status)
     (setq lsp-ltex-plus-doctor--timer
           (run-at-time lsp-ltex-plus-doctor-timeout nil
@@ -673,11 +723,47 @@ html#magic-comments][magic comment]]: the comment sets the language for\n"
   (lsp-ltex-plus-restart-server)
   (lsp-ltex-plus-doctor-refresh))
 
+(defun lsp-ltex-plus-doctor-toggle-options ()
+  "Show or hide the setting that stands behind each value."
+  (interactive)
+  (setq lsp-ltex-plus-doctor--options-hidden
+        (not lsp-ltex-plus-doctor--options-hidden))
+  (if lsp-ltex-plus-doctor--options-hidden
+      (add-to-invisibility-spec 'lsp-ltex-plus-doctor-options)
+    (remove-from-invisibility-spec 'lsp-ltex-plus-doctor-options))
+  (message "[lsp-ltex-plus] %s"
+           (if lsp-ltex-plus-doctor--options-hidden
+               "Settings hidden; press v to see which setting holds a value"
+             "Each value now names the setting behind it")))
+
+(defconst lsp-ltex-plus-doctor--keys
+  '((?g . lsp-ltex-plus-doctor-refresh)
+    (?r . lsp-ltex-plus-doctor-restart-server)
+    (?v . lsp-ltex-plus-doctor-toggle-options)
+    (?q . bury-buffer))
+  "What each letter does while point is in the report.")
+
+(defun lsp-ltex-plus-doctor-key ()
+  "Act on the report, or type the key in the examples.
+The examples are prose to try the checker on -- edit one, watch the
+underlines follow, fix it with `lsp-ltex-plus-actions' -- so a letter
+typed there has to arrive as a letter.  The report above is written by
+this package and replaced whole by the next refresh, so a letter there
+is free to mean something."
+  (interactive)
+  (let ((command (and (get-text-property (point) 'lsp-ltex-plus-doctor-report)
+                      (alist-get last-command-event
+                                 lsp-ltex-plus-doctor--keys))))
+    (if command
+        (call-interactively command)
+      (call-interactively #'self-insert-command))))
+
 (defvar-keymap lsp-ltex-plus-doctor-mode-map
   :doc "Keymap for `lsp-ltex-plus-doctor-mode'."
-  "g" #'lsp-ltex-plus-doctor-refresh
-  "r" #'lsp-ltex-plus-doctor-restart-server
-  "q" #'bury-buffer)
+  "g" #'lsp-ltex-plus-doctor-key
+  "r" #'lsp-ltex-plus-doctor-key
+  "v" #'lsp-ltex-plus-doctor-key
+  "q" #'lsp-ltex-plus-doctor-key)
 
 (define-derived-mode lsp-ltex-plus-doctor-mode org-mode "LTeX+ doctor"
   "Major mode for the `lsp-ltex-plus-doctor' report.
@@ -697,6 +783,9 @@ reads the magic comments in it.  The language id is inherited through
   ;; binding around the call: it has to hold for every later check too,
   ;; after a restart or a mode toggle.
   (setq-local lsp-ltex-plus-check-fileless-buffers t)
+  ;; The settings behind the values are there to be asked for, not read
+  ;; every time; `v' asks.
+  (add-to-invisibility-spec 'lsp-ltex-plus-doctor-options)
   (add-hook 'lsp-ltex-plus--diagnostics-functions
             #'lsp-ltex-plus-doctor--on-diagnostics nil t)
   (add-hook 'kill-buffer-hook #'lsp-ltex-plus-doctor--cancel-timer nil t))

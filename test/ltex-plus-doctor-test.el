@@ -186,16 +186,18 @@ that names nothing of ours."
   (ltex-plus-doctor-test--with-report
     (org-num-mode 1)
     (should (> (length org-num--overlays) 0))
-    (let ((theirs (length org-num--overlays)))
-      (lsp-ltex-plus-doctor--fill)
-      (should (= theirs (seq-count #'overlay-start
-                                   (append org-num--overlays nil))))
-      ;; And ours are replaced, not accumulated: one per sample and one
-      ;; for the check as a whole.
-      (should (= (1+ (length lsp-ltex-plus-doctor--sections))
-                 (seq-count (lambda (overlay)
-                              (overlay-get overlay 'lsp-ltex-plus-doctor))
-                            (overlays-in (point-min) (point-max))))))))
+    (cl-flet ((ours ()
+                (seq-count (lambda (overlay)
+                             (overlay-get overlay 'lsp-ltex-plus-doctor))
+                           (overlays-in (point-min) (point-max)))))
+      (let ((theirs (length org-num--overlays))
+            (mine (ours)))
+        (should (> mine (length lsp-ltex-plus-doctor--sections)))
+        (lsp-ltex-plus-doctor--fill)
+        (should (= theirs (seq-count #'overlay-start
+                                     (append org-num--overlays nil))))
+        ;; And ours are replaced, not accumulated.
+        (should (= mine (ours)))))))
 
 (ert-deftest ltex-plus-doctor-test-the-states-are-a-traffic-light ()
   "Answered is `success\=', still waiting is `warning\=', failed is `error\='.
@@ -273,6 +275,48 @@ bury the rest of the report."
             (should (equal (nth 1 lines) "    - [[ltex-buffer:doc-0][doc-0]]"))
             (should (string-match-p "and 2 more" value))))
       (mapc #'kill-buffer buffers))))
+
+(ert-deftest ltex-plus-doctor-test-the-settings-are-hidden-until-asked-for ()
+  "Each value names the setting behind it, and `v\=' shows or hides it.
+Hidden by default: a reader wants to know what the client found, and
+only sometimes which variable to change.  The text is there either way,
+so copying a row copies the setting's name with it."
+  (ltex-plus-doctor-test--with-report
+    (should lsp-ltex-plus-doctor--options-hidden)
+    (should (memq 'lsp-ltex-plus-doctor-options buffer-invisibility-spec))
+    ;; The name is in the buffer, under an overlay that hides it.
+    (goto-char (point-min))
+    (should (search-forward "~lsp-ltex-plus-language~" nil t))
+    (should (seq-some (lambda (overlay)
+                        (eq (overlay-get overlay 'invisible)
+                            'lsp-ltex-plus-doctor-options))
+                      (overlays-in (point-min) (point-max))))
+    (lsp-ltex-plus-doctor-toggle-options)
+    (should-not lsp-ltex-plus-doctor--options-hidden)
+    (should-not (memq 'lsp-ltex-plus-doctor-options buffer-invisibility-spec))
+    (lsp-ltex-plus-doctor-toggle-options)
+    (should (memq 'lsp-ltex-plus-doctor-options buffer-invisibility-spec))))
+
+(ert-deftest ltex-plus-doctor-test-a-letter-is-a-command-only-in-the-report ()
+  "`g\=' acts in the report and types itself in an example.
+The mode derives from `org-mode\=', so the buffer is editable; binding
+plain letters would otherwise take three keys away from anyone trying
+the checker on the samples."
+  (ltex-plus-doctor-test--with-report
+    (goto-char (point-min))
+    (should (get-text-property (point) 'lsp-ltex-plus-doctor-report))
+    (goto-char (marker-position
+                (plist-get (car lsp-ltex-plus-doctor--sections) :beg)))
+    (should-not (get-text-property (point) 'lsp-ltex-plus-doctor-report))
+    ;; The example takes an edit -- that is the point of it ...
+    (insert "x")
+    (should (looking-back "x" 1))
+    (delete-char -1)
+    ;; ... and the report refuses one.  Not at `point-min': Emacs always
+    ;; allows an insertion there, since no character precedes it.
+    (goto-char (point-min))
+    (search-forward "Executable")
+    (should-error (insert "x") :type 'text-read-only)))
 
 ;;;; -- On a server -------------------------------------------------------------
 
