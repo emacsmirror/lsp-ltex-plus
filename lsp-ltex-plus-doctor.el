@@ -30,6 +30,56 @@
 (defconst lsp-ltex-plus-doctor-buffer-name "*lsp-ltex-plus doctor*"
   "Name of the buffer `lsp-ltex-plus-doctor' reports in.")
 
+(defcustom lsp-ltex-plus-doctor-samples
+  '(("en-US" "English" "She go to the libary every day and dont come back.")
+    ("fr-FR" "French" "Je voudrais aller a la bibliotheque tout les jours.")
+    ("de-DE" "German" "Ich gehe jeden Tag in die Bibliotek und komme nicht zuruck."))
+  "Sample texts the doctor has the server check, one per language.
+Each entry is (LANGUAGE LABEL TEXT).  LANGUAGE is an `ltex.language\='
+code, which the doctor puts in a magic comment so that one document can
+be checked in several languages.
+
+Every TEXT must contain at least one mistake the server is certain to
+flag, because a section that shows nothing has to mean \"no answer
+yet\" -- a sample that is merely correct would be indistinguishable
+from a language that failed to load.  Misspellings are used rather than
+style rules, which come and go between LanguageTool releases.
+
+The first section is the language you are configured for, when a sample
+matches it; the others follow in this order.  Each new language costs
+the server a model load, about ten seconds the first time."
+  :type '(repeat (list (string :tag "Language")
+                       (string :tag "Label")
+                       (string :tag "Sample text")))
+  :group 'lsp-ltex-plus)
+
+(defconst lsp-ltex-plus-doctor-timeout 30
+  "Seconds after which a section with no findings says so.
+Long enough for a language model to load on a cold server, short enough
+that the buffer does not sit there claiming to be waiting for ever.")
+
+(defvar-local lsp-ltex-plus-doctor--sections nil
+  "The sample sections in this buffer, in the order they appear.
+Each is a plist with `:language\=', `:label\=', `:beg\=' and `:end\=' markers
+around the sample text, an `:overlay\=' carrying the status, and
+`:found\=' once the server has flagged something in it.")
+
+(defvar-local lsp-ltex-plus-doctor--started nil
+  "When the current report was written, as a float time.
+The clock each section\='s timing is measured from.")
+
+(defvar-local lsp-ltex-plus-doctor--timer nil
+  "The timer that gives up waiting, or nil.")
+
+(defvar-local lsp-ltex-plus-doctor--overall nil
+  "Overlay carrying how long the whole check took, or nil.")
+
+(defvar-local lsp-ltex-plus-doctor--answered nil
+  "Seconds the first answer took, or nil while none has come.
+One number for the document, not one per section: the server checks the
+whole of it and publishes once, so every section is answered at the same
+moment.")
+
 ;;;; -- Facts to report ---------------------------------------------------------
 
 (defun lsp-ltex-plus-doctor--library-version (library)
@@ -194,15 +244,164 @@ so none of it is offered to the server as prose."
           "  about.  So what a project's buffers are checked with may not\n"
           "  be what this page shows.\n\n"))
 
+(defun lsp-ltex-plus-doctor--ordered-samples ()
+  "Return `lsp-ltex-plus-doctor-samples\=', the configured language first.
+A sample for exactly `lsp-ltex-plus-language\=' leads; failing that, one
+for the same language in another variant does, and it is checked under
+the configured code rather than its own -- the text is the same
+language, and what the user wants to see working is their setting.
+With no sample for it at all, the shipped order is kept and the report
+says so."
+  (let* ((configured lsp-ltex-plus-language)
+         (family (car (split-string configured "-")))
+         (match (or (seq-find (lambda (sample) (equal (nth 0 sample) configured))
+                              lsp-ltex-plus-doctor-samples)
+                    (seq-find (lambda (sample)
+                                (equal (car (split-string (nth 0 sample) "-"))
+                                       family))
+                              lsp-ltex-plus-doctor-samples))))
+    (if (not match)
+        lsp-ltex-plus-doctor-samples
+      (cons (list configured
+                  (format "%s (%s, your language)" (nth 1 match) configured)
+                  (nth 2 match))
+            (remq match lsp-ltex-plus-doctor-samples)))))
+
+(defun lsp-ltex-plus-doctor--insert-sample (sample first)
+  "Insert SAMPLE as a checked section and return its plist.
+FIRST says this is the first one, which has to switch checking back on
+after the magic comment that disabled it for the report."
+  (pcase-let ((`(,language ,label ,text) sample))
+    (insert (format "# LTeX: %slanguage=%s\n"
+                    (if first "enabled=true " "") language))
+    (insert "* " label "\n")
+    (let ((overlay (make-overlay (1- (point)) (point) nil t nil))
+          (beg (point-marker)))
+      (insert "  " text "\n\n")
+      ;; Insertion type nil, both markers: the sections after this one
+      ;; are inserted at exactly this point, and an end marker that
+      ;; advanced with them would swallow their findings.
+      (let ((end (point-marker)))
+        (list :language language :label label
+              :beg beg :end end :overlay overlay :found nil)))))
+
+(defun lsp-ltex-plus-doctor--overall-status ()
+  "Return what to show beside the heading of the samples."
+  (cond (lsp-ltex-plus-doctor--answered
+         (propertize (format "  checked in %.1f s"
+                             lsp-ltex-plus-doctor--answered)
+                     'face 'success))
+        ((not lsp-ltex-plus-mode)
+         (propertize "  nothing was sent" 'face 'error))
+        (t (propertize "  waiting for the first answer" 'face 'shadow))))
+
+(defun lsp-ltex-plus-doctor--status (section)
+  "Return the status string SECTION should be showing."
+  (let ((found (plist-get section :found)))
+    (cond
+     (found (propertize (format "  %s" found) 'face 'success))
+     ((not lsp-ltex-plus-mode)
+      (propertize "  not checked -- nothing was sent; see the report above"
+                  'face 'error))
+     ((plist-get section :timed-out)
+      (propertize (format "  no answer after %d s -- the server may not have \
+been able to load this language; see `lsp-ltex-plus-java-max-heap\='"
+                          lsp-ltex-plus-doctor-timeout)
+                  'face 'warning))
+     (t (propertize "  waiting for the server -- a language model loads on \
+first use, which takes a few seconds" 'face 'shadow)))))
+
+(defun lsp-ltex-plus-doctor--show-status ()
+  "Put each section\='s status on its heading.
+The status is an overlay, not text: the document the server holds must
+not change every time an answer arrives, or each answer would provoke
+another check."
+  (dolist (section lsp-ltex-plus-doctor--sections)
+    (overlay-put (plist-get section :overlay)
+                 'after-string (lsp-ltex-plus-doctor--status section)))
+  (when lsp-ltex-plus-doctor--overall
+    (overlay-put lsp-ltex-plus-doctor--overall
+                 'after-string (lsp-ltex-plus-doctor--overall-status))))
+
+(defun lsp-ltex-plus-doctor--count-in (section)
+  "Return how many diagnostics fall inside SECTION\='s sample text."
+  (let ((beg (plist-get section :beg))
+        (end (plist-get section :end)))
+    (seq-count (lambda (diagnostic)
+                 (let ((region (lsp-ltex-plus--diagnostic-region diagnostic)))
+                   (and (>= (car region) (marker-position beg))
+                        (<= (cdr region) (marker-position end)))))
+               lsp-ltex-plus--diagnostics)))
+
+(defun lsp-ltex-plus-doctor--on-diagnostics (buffer)
+  "Note what the server found for BUFFER, section by section.
+On `lsp-ltex-plus--diagnostics-functions\='.  A section keeps the first
+answer it got: the timing is how long that language took to arrive, and
+a later publish saying the same thing must not reset it."
+  (when (eq buffer (current-buffer))
+    (when (and lsp-ltex-plus--diagnostics
+               (not lsp-ltex-plus-doctor--answered))
+      (setq lsp-ltex-plus-doctor--answered
+            (- (float-time) lsp-ltex-plus-doctor--started)))
+    (dolist (section lsp-ltex-plus-doctor--sections)
+      (let ((count (lsp-ltex-plus-doctor--count-in section)))
+        (when (and (> count 0) (not (plist-get section :found)))
+          (plist-put section :found
+                     (format "%d finding%s" count (if (= count 1) "" "s"))))))
+    (lsp-ltex-plus-doctor--show-status)))
+
+(defun lsp-ltex-plus-doctor--give-up (buffer)
+  "Say, in BUFFER, that the sections still empty may never fill."
+  (when (buffer-live-p buffer)
+    (with-current-buffer buffer
+      (dolist (section lsp-ltex-plus-doctor--sections)
+        (unless (plist-get section :found)
+          (plist-put section :timed-out t)))
+      (lsp-ltex-plus-doctor--show-status))))
+
+(defun lsp-ltex-plus-doctor--cancel-timer ()
+  "Stop waiting for an answer that is not coming."
+  (when (timerp lsp-ltex-plus-doctor--timer)
+    (cancel-timer lsp-ltex-plus-doctor--timer))
+  (setq lsp-ltex-plus-doctor--timer nil))
+
 (defun lsp-ltex-plus-doctor--fill ()
-  "Replace the contents of the current doctor buffer with a fresh report."
-  (let ((inhibit-read-only t))
+  "Replace the contents of the current doctor buffer with a fresh report.
+The report first, kept out of the check by a magic comment, then one
+section per sample, each switching the language for what follows it."
+  (let ((inhibit-read-only t)
+        (samples (lsp-ltex-plus-doctor--ordered-samples)))
+    (lsp-ltex-plus-doctor--cancel-timer)
+    (remove-overlays)
+    (setq lsp-ltex-plus-doctor--sections nil)
     (erase-buffer)
     ;; Line one, and it governs everything after it: the report is not
     ;; prose and must not be checked.  See the magic comment reference,
     ;; https://ltex-plus.github.io/ltex-plus/advanced-usage.html#magic-comments
     (insert "# LTeX: enabled=false\n")
     (lsp-ltex-plus-doctor--insert-report)
+    (insert "* Is it working?")
+    (setq lsp-ltex-plus-doctor--overall
+          (make-overlay (1- (point)) (point) nil t nil))
+    (insert "\n"
+            "  Each sample below is wrong on purpose, and is checked in its\n"
+            "  own language; the heading of each says what came back.  The\n"
+            "  whole document is checked in one go, so one language that has\n"
+            "  to load a model -- about ten seconds, the first time you use\n"
+            "  it -- holds up the answer for all of them.\n\n")
+    (setq lsp-ltex-plus-doctor--answered nil)
+    (setq lsp-ltex-plus-doctor--started (float-time))
+    (let ((first t))
+      (dolist (sample samples)
+        (push (lsp-ltex-plus-doctor--insert-sample sample first)
+              lsp-ltex-plus-doctor--sections)
+        (setq first nil)))
+    (setq lsp-ltex-plus-doctor--sections
+          (nreverse lsp-ltex-plus-doctor--sections))
+    (lsp-ltex-plus-doctor--show-status)
+    (setq lsp-ltex-plus-doctor--timer
+          (run-at-time lsp-ltex-plus-doctor-timeout nil
+                       #'lsp-ltex-plus-doctor--give-up (current-buffer)))
     (goto-char (point-min))))
 
 ;;;; -- The mode and its commands -----------------------------------------------
@@ -236,7 +435,10 @@ reads the magic comments in it.  The language id is inherited through
   ;; checking off did not mean this buffer.  Buffer-local rather than a
   ;; binding around the call: it has to hold for every later check too,
   ;; after a restart or a mode toggle.
-  (setq-local lsp-ltex-plus-check-fileless-buffers t))
+  (setq-local lsp-ltex-plus-check-fileless-buffers t)
+  (add-hook 'lsp-ltex-plus--diagnostics-functions
+            #'lsp-ltex-plus-doctor--on-diagnostics nil t)
+  (add-hook 'kill-buffer-hook #'lsp-ltex-plus-doctor--cancel-timer nil t))
 
 ;;;###autoload
 (defun lsp-ltex-plus-doctor ()
@@ -249,7 +451,28 @@ each log is going."
     (with-current-buffer buffer
       (unless (derived-mode-p 'lsp-ltex-plus-doctor-mode)
         (lsp-ltex-plus-doctor-mode))
-      (lsp-ltex-plus-doctor--fill))
+      (lsp-ltex-plus-doctor--fill)
+      ;; Explicitly, not through the dispatcher: this buffer is checked
+      ;; whatever set of modes the user enabled the package for.
+      (unless lsp-ltex-plus-mode
+        (lsp-ltex-plus-mode 1))
+      ;; The mode may have declined -- no server, an old one -- and the
+      ;; sections must say that rather than claim to be waiting.
+      (lsp-ltex-plus-doctor--show-status)
+      ;; The report was written before the handshake, so it could only
+      ;; say that no server was running.  Write it again once one is,
+      ;; or the version the user came here to read is the one thing
+      ;; missing from it.
+      (let ((connection (lsp-ltex-plus--live-connection))
+            (buffer (current-buffer)))
+        (when (and connection
+                   (not (lsp-ltex-plus--connection-ready connection)))
+          (lsp-ltex-plus--when-ready
+           connection
+           (lambda ()
+             (when (buffer-live-p buffer)
+               (with-current-buffer buffer
+                 (lsp-ltex-plus-doctor--fill))))))))
     (pop-to-buffer buffer)))
 
 (provide 'lsp-ltex-plus-doctor)

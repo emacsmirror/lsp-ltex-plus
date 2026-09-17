@@ -1,0 +1,201 @@
+;;; ltex-plus-doctor-test.el --- The doctor buffer -*- lexical-binding: t; -*-
+
+;; This Source Code Form is subject to the terms of the Mozilla Public
+;; License, v. 2.0. If a copy of the MPL was not distributed with this
+;; file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+;;; Commentary:
+
+;; The doctor is a buffer the package checks like any other, so most of
+;; what it does is already covered elsewhere.  What is asserted here is
+;; what is particular to it: that the report is disabled and the samples
+;; are not, that a finding is counted against the section it lands in
+;; and no other, and -- the point of the whole design -- that a section
+;; with nothing in it never reads as a section with nothing wrong.
+;;
+;; The real server is not needed for any of that; the one test that
+;; wants a document opened uses the fake.
+
+;;; Code:
+
+(require 'ltex-plus-test-helper)
+(require 'ltex-plus-fake-server)
+(require 'lsp-ltex-plus-doctor)
+
+(defmacro ltex-plus-doctor-test--with-report (&rest body)
+  "Run BODY in a filled doctor buffer, with no server and no checking."
+  (declare (indent 0) (debug t))
+  `(let ((buffer (generate-new-buffer "*ltex-plus-doctor-test*")))
+     (unwind-protect
+         (with-current-buffer buffer
+           (lsp-ltex-plus-doctor-mode)
+           (lsp-ltex-plus-doctor--fill)
+           ,@body)
+       (with-current-buffer buffer
+         (lsp-ltex-plus-doctor--cancel-timer))
+       (kill-buffer buffer))))
+
+(defun ltex-plus-doctor-test--pretend-checked ()
+  "Say the buffer is being checked, without a server to check it.
+The status of a section depends on it: with the mode off the honest
+answer is that nothing was sent, which is a different test."
+  (setq-local lsp-ltex-plus-mode t)
+  (lsp-ltex-plus-doctor--show-status))
+
+(defun ltex-plus-doctor-test--status (label)
+  "Return the status shown for the section called LABEL."
+  (let ((section (seq-find (lambda (s) (equal (plist-get s :label) label))
+                           lsp-ltex-plus-doctor--sections)))
+    (substring-no-properties
+     (or (overlay-get (plist-get section :overlay) 'after-string) ""))))
+
+(defun ltex-plus-doctor-test--diagnostic-on (text)
+  "Return a diagnostic covering the first occurrence of TEXT in the buffer."
+  (save-excursion
+    (goto-char (point-min))
+    (search-forward text)
+    (list :message (format "%s is wrong" text)
+          :severity 1
+          :range (list :start (lsp-ltex-plus--point-to-position (match-beginning 0))
+                       :end (lsp-ltex-plus--point-to-position (match-end 0))))))
+
+;;;; -- What the server is and is not asked to check ----------------------------
+
+(ert-deftest ltex-plus-doctor-test-the-report-is-not-checked ()
+  "The report sits under a magic comment that disables checking.
+It is paths, symbols and version strings; offering it as prose would
+flag the package's own name and teach the user nothing."
+  (ltex-plus-doctor-test--with-report
+    (goto-char (point-min))
+    (should (looking-at-p "# LTeX: enabled=false$"))
+    ;; And exactly one comment turns it back on, on the first sample.
+    (should (= 1 (count-matches "^# LTeX: enabled=true")))
+    (should (< (save-excursion (goto-char (point-min))
+                               (search-forward "* Environment"))
+               (save-excursion (goto-char (point-min))
+                               (search-forward "# LTeX: enabled=true"))))))
+
+(ert-deftest ltex-plus-doctor-test-each-sample-names-its-language ()
+  "Every sample is preceded by a magic comment naming its language."
+  (ltex-plus-doctor-test--with-report
+    (dolist (section lsp-ltex-plus-doctor--sections)
+      (goto-char (point-min))
+      (should (search-forward (format "language=%s" (plist-get section :language))
+                              nil t)))))
+
+(ert-deftest ltex-plus-doctor-test-the-configured-language-comes-first ()
+  "The language the user is configured for leads, and says so.
+Its model is the one already loaded, so it is the section that can
+answer first; and it is the one the user actually wants to see work."
+  (let ((lsp-ltex-plus-language "de-DE"))
+    (ltex-plus-doctor-test--with-report
+      (let ((first (car lsp-ltex-plus-doctor--sections)))
+        (should (equal (plist-get first :language) "de-DE"))
+        (should (string-match-p "your language" (plist-get first :label))))))
+  ;; A variant of the same language is close enough to lead, and is
+  ;; checked under the code the user set rather than the sample's.
+  (let ((lsp-ltex-plus-language "en-GB"))
+    (ltex-plus-doctor-test--with-report
+      (should (equal (plist-get (car lsp-ltex-plus-doctor--sections) :language)
+                     "en-GB"))))
+  ;; With no sample for it, the shipped order stands.
+  (let ((lsp-ltex-plus-language "nl-NL"))
+    (ltex-plus-doctor-test--with-report
+      (should (equal (plist-get (car lsp-ltex-plus-doctor--sections) :language)
+                     (car (car lsp-ltex-plus-doctor-samples)))))))
+
+;;;; -- Reporting what came back ------------------------------------------------
+
+(ert-deftest ltex-plus-doctor-test-a-finding-counts-for-its-own-section ()
+  "A finding is counted against the section it falls in, and no other.
+The sections are inserted one after another, so an end marker that
+moved with later insertions would let the first section swallow every
+finding in the buffer."
+  (ltex-plus-doctor-test--with-report
+    (ltex-plus-doctor-test--pretend-checked)
+    (setq lsp-ltex-plus--diagnostics
+          (list (ltex-plus-doctor-test--diagnostic-on "libary")
+                (ltex-plus-doctor-test--diagnostic-on "Bibliotek")))
+    (lsp-ltex-plus-doctor--on-diagnostics (current-buffer))
+    (should (equal (ltex-plus-doctor-test--status "English (en-US, your language)")
+                   "  1 finding"))
+    (should (equal (ltex-plus-doctor-test--status "German") "  1 finding"))
+    (should (string-match-p "waiting"
+                            (ltex-plus-doctor-test--status "French")))))
+
+(ert-deftest ltex-plus-doctor-test-nothing-yet-never-reads-as-nothing-wrong ()
+  "A section with no findings says why, and never that it is clean.
+Every sample is wrong on purpose, so an empty section means the answer
+has not come -- or is not coming.  Saying nothing would read as a pass
+and send the user looking for a problem that is not there."
+  (ltex-plus-doctor-test--with-report
+    (ltex-plus-doctor-test--pretend-checked)
+    (should (string-match-p "waiting" (ltex-plus-doctor-test--status "German")))
+    (lsp-ltex-plus-doctor--give-up (current-buffer))
+    (let ((status (ltex-plus-doctor-test--status "German")))
+      (should (string-match-p "no answer" status))
+      (should (string-match-p "lsp-ltex-plus-java-max-heap" status)))))
+
+(ert-deftest ltex-plus-doctor-test-an-unchecked-buffer-says-so ()
+  "With the mode off, the sections say nothing was sent.
+The mode declines when no server can be found; a buffer that then said
+it was waiting would be waiting for something nobody sent."
+  (ltex-plus-doctor-test--with-report
+    (should-not lsp-ltex-plus-mode)
+    (should (string-match-p "nothing was sent"
+                            (substring-no-properties
+                             (overlay-get lsp-ltex-plus-doctor--overall
+                                          'after-string))))
+    (should (string-match-p "not checked"
+                            (ltex-plus-doctor-test--status "French")))))
+
+(ert-deftest ltex-plus-doctor-test-the-timing-is-for-the-whole-check ()
+  "One timing, on the samples' heading, not one per section.
+The server checks the whole document and publishes once, so a
+per-section time would be the same number repeated."
+  (ltex-plus-doctor-test--with-report
+    (ltex-plus-doctor-test--pretend-checked)
+    (setq lsp-ltex-plus--diagnostics
+          (list (ltex-plus-doctor-test--diagnostic-on "libary")))
+    (lsp-ltex-plus-doctor--on-diagnostics (current-buffer))
+    (should (string-match-p
+             "checked in [0-9.]+ s"
+             (substring-no-properties
+              (overlay-get lsp-ltex-plus-doctor--overall 'after-string))))
+    (should-not (string-match-p
+                 " s\\'" (ltex-plus-doctor-test--status
+                          "English (en-US, your language)")))))
+
+;;;; -- On a server -------------------------------------------------------------
+
+(ert-deftest ltex-plus-doctor-test-the-document-is-opened-as-org ()
+  "The doctor buffer is opened on the server, once, as an org document.
+The mode derives from `org-mode' and is not in the mode table, so this
+is also the end-to-end check that the id is inherited rather than
+registered as plain text."
+  (ltex-plus-fake-with-connection
+    (let ((inhibit-message t)
+          (lsp-ltex-plus-change-delay 0.1)
+          (table (copy-sequence lsp-ltex-plus-major-modes)))
+      (unwind-protect
+          (progn
+            (lsp-ltex-plus-doctor)
+            (ltex-plus-fake-wait-for
+             (lambda () (ltex-plus-fake-received 'textDocument/didOpen)))
+            (let ((params (car (ltex-plus-fake-received 'textDocument/didOpen))))
+              (should (equal (plist-get (plist-get params :textDocument) :languageId)
+                             "org")))
+            (should (equal table lsp-ltex-plus-major-modes))
+            (with-current-buffer lsp-ltex-plus-doctor-buffer-name
+              (should lsp-ltex-plus-mode)
+              (should lsp-ltex-plus-check-fileless-buffers)
+              (should (local-variable-p 'lsp-ltex-plus-check-fileless-buffers))
+              ;; Writing the report again is an edit, not a second
+              ;; document: the server is told the text changed.
+              (lsp-ltex-plus-doctor-refresh)
+              (should (= 1 (hash-table-count lsp-ltex-plus--documents)))))
+        (when (get-buffer lsp-ltex-plus-doctor-buffer-name)
+          (kill-buffer lsp-ltex-plus-doctor-buffer-name))))))
+
+(provide 'ltex-plus-doctor-test)
+;;; ltex-plus-doctor-test.el ends here

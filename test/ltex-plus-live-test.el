@@ -479,6 +479,44 @@ would be deleted after a grace period and show up here as a warning."
      (lambda () (null (ltex-plus-live-test--server-processes)))
      "the server process to end")))
 
+;;;; -- The doctor ---------------------------------------------------------------
+
+(ltex-plus-live-deftest ltex-plus-live-test-the-doctor-checks-itself
+    "The doctor's samples come back flagged, and its report is not checked.
+The offline tests fabricate the diagnostics; only a real server shows
+that the magic comments in the buffer do what the doctor relies on --
+`enabled=false' keeping the report out of the check, and `language='
+switching the language between one sample and the next.  Which mistakes
+come back is the server's business and is not asserted."
+  (ltex-plus-live-test--setup)
+  (require 'lsp-ltex-plus-doctor)
+  (let ((inhibit-message t))
+    (lsp-ltex-plus-doctor))
+  (with-current-buffer lsp-ltex-plus-doctor-buffer-name
+    (push (current-buffer) ltex-plus-live--buffers)
+    ;; Read the section afresh every time: the report is written again
+    ;; when the handshake completes, and that builds new sections.
+    (let ((first (lambda () (car lsp-ltex-plus-doctor--sections))))
+      (ltex-plus-live-until
+       (lambda () (plist-get (funcall first) :found))
+       "the doctor's first sample to be flagged")
+      ;; Nothing above the first sample: the report is paths and version
+      ;; strings, and the magic comment on line one keeps it out.
+      (should (= 0 (seq-count
+                    (lambda (diagnostic)
+                      (< (car (lsp-ltex-plus--diagnostic-region diagnostic))
+                         (marker-position (plist-get (funcall first) :beg))))
+                    lsp-ltex-plus--diagnostics)))
+      ;; Once the handshake is done the report is written again, so the
+      ;; version the binary reports is in the buffer to be copied into a
+      ;; bug report.
+      (ltex-plus-live-until
+       (lambda ()
+         (save-excursion
+           (goto-char (point-min))
+           (search-forward (ltex-plus-live-server-version) nil t)))
+       "the report to name the server's version"))))
+
 ;;;; -- The server's own log file -----------------------------------------------
 
 (ltex-plus-live-deftest ltex-plus-live-test-the-server-writes-the-log-file

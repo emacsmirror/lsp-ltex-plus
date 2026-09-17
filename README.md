@@ -626,6 +626,25 @@ Version 1.0.0 replaced `lsp-mode` with the `jsonrpc` library bundled with Emacs 
 
 All variables mentioned below are standard Emacs customization options. If you use `use-package`, it is recommended to set them within the `:custom` block of your configuration.
 
+### Start here: `M-x lsp-ltex-plus-doctor`
+
+One buffer that answers *is this working, and with what?* It reports the server it found and what that server says about itself, the minimum version and whether it is enforced, the state of the connection, the settings a check is made with, where each log is going, and the Emacs, `jsonrpc` and package versions — so the whole buffer is a bug report you can copy with `C-x h M-w`.
+
+Below the report it checks itself. Each sample is wrong on purpose and is checked in its own language, using LTeX+'s [magic comments](https://ltex-plus.github.io/ltex-plus/advanced-usage.html#magic-comments) to switch language mid-document, so you can watch the underlines appear:
+
+```org
+* English (en-US, your language)     3 findings
+  She go to the libary every day and dont come back.
+* French                             3 findings
+  Je voudrais aller a la bibliotheque tout les jours.
+* German                             2 findings
+  Ich gehe jeden Tag in die Bibliotek und komme nicht zuruck.
+```
+
+A section that is still empty says so, and says why: **a section never goes quiet to mean "nothing wrong"**, because everything there is wrong on purpose. Sections show `waiting for the server` while the check is out, and after thirty seconds `no answer` with a pointer to `lsp-ltex-plus-java-max-heap` — the usual reason a language never arrives is that the server could not load its model in the heap it was given. The whole document is checked in one go, so one language that has to load a model — about ten seconds, the first time — holds up the answer for all of them.
+
+In the buffer: `g` writes the report again, `r` restarts the server, `q` buries it, and `C-c "` is the ordinary suggestions menu. The samples are `lsp-ltex-plus-doctor-samples`; add your own language to see it checked.
+
 ### Server Not Found
 
 If Emacs cannot find the `ltex-ls-plus` binary, turning the mode on says so and names the setting to fix. Ensure the binary is in your system `PATH`; you can verify this within Emacs by evaluating:
