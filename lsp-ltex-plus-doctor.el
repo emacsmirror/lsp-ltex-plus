@@ -125,10 +125,11 @@ a JVM every time the report is written."
                     (lsp-ltex-plus--connection-server-info connection)))
          (version (and info (plist-get info :version))))
     (list (cons "Executable"
-                (or executable
-                    (format "not found -- =%s= is not on ~exec-path~; \
-set ~lsp-ltex-plus-ls-plus-executable~"
-                            lsp-ltex-plus-ls-plus-executable)))
+                (format "%s (~lsp-ltex-plus-ls-plus-executable~, \
+~lsp-ltex-plus-ltex-ls-path~)"
+                        (or executable
+                            (format "not found -- =%s= is not on ~exec-path~"
+                                    lsp-ltex-plus-ls-plus-executable))))
           (cons "Full version label"
                 (cond ((not connection) "no server is running")
                       (version (format "%s %s"
@@ -139,7 +140,8 @@ set ~lsp-ltex-plus-ls-plus-executable~"
                 (or (lsp-ltex-plus--version-number version)
                     (if connection "none" "--")))
           (cons "Minimum version"
-                (format "%s, %s%s"
+                (format "%s, %s%s (~lsp-ltex-plus-minimum-server-version~, \
+~lsp-ltex-plus-require-minimum-server-version~)"
                         lsp-ltex-plus-minimum-server-version
                         (if lsp-ltex-plus-require-minimum-server-version
                             "required" "not required")
@@ -149,20 +151,22 @@ set ~lsp-ltex-plus-ls-plus-executable~"
                                " (met)")
                               (t " (NOT met)"))))
           (cons "JAVA_HOME"
-                (if lsp-ltex-plus-java-path
-                    (format "%s, from ~lsp-ltex-plus-java-path~"
+                (format "%s (~lsp-ltex-plus-java-path~)"
+                        (if lsp-ltex-plus-java-path
                             (directory-file-name
-                             (expand-file-name lsp-ltex-plus-java-path)))
-                  "not set by Emacs"))
+                             (expand-file-name lsp-ltex-plus-java-path))
+                          "not set by Emacs")))
           (cons "Java"
                 (format "%s -- resolved by Emacs, not guaranteed: the \
 launcher script can export a JAVA_HOME of its own"
                         (or (lsp-ltex-plus-doctor--java) "none found")))
           (cons "Heap"
-                (let ((options (lsp-ltex-plus--heap-options)))
-                  (if options
-                      (string-join options " ")
-                    "the JVM's own default"))))))
+                (format "%s (~lsp-ltex-plus-java-initial-heap~, \
+~lsp-ltex-plus-java-max-heap~)"
+                        (let ((options (lsp-ltex-plus--heap-options)))
+                          (if options
+                              (string-join options " ")
+                            "the JVM's own default")))))))
 
 (defun lsp-ltex-plus-doctor--connection-line ()
   "Return what is known about the connection to the server."
@@ -182,17 +186,22 @@ handshake complete")
 
 (defun lsp-ltex-plus-doctor--buffer-line ()
   "Return what is in force in the doctor buffer itself."
-  (list (cons "Language id" (lsp-ltex-plus--language-id))
+  (list (cons "Language id"
+              (format "%s (~lsp-ltex-plus-major-modes~)"
+                      (lsp-ltex-plus--language-id)))
         (cons "Front-end"
               (cond ((null lsp-ltex-plus--attached-provider)
                      (format "none: this buffer is not being checked.  \
-Your setting asks for %s" lsp-ltex-plus-diagnostics-provider))
+Your setting asks for %s (~lsp-ltex-plus-diagnostics-provider~)"
+                             lsp-ltex-plus-diagnostics-provider))
                     ((eq lsp-ltex-plus--attached-provider
                          lsp-ltex-plus-diagnostics-provider)
-                     (format "%s" lsp-ltex-plus--attached-provider))
+                     (format "%s (~lsp-ltex-plus-diagnostics-provider~)"
+                             lsp-ltex-plus--attached-provider))
                     (t (format "%s.  Your setting asks for %s, which this \
-Emacs does not have" lsp-ltex-plus--attached-provider
-                       lsp-ltex-plus-diagnostics-provider))))
+Emacs does not have (~lsp-ltex-plus-diagnostics-provider~)"
+                               lsp-ltex-plus--attached-provider
+                               lsp-ltex-plus-diagnostics-provider))))
         (cons "Checked" (if lsp-ltex-plus-mode "yes" "no"))))
 
 (defun lsp-ltex-plus-doctor--file-link (variable)
@@ -219,17 +228,20 @@ files the entries come from, named and followed."
                                   (substring (symbol-name language) 1)
                                   count
                                   (if (= count 1) (substring unit 0 -1) unit))))))
-  (insert (format "    - %-12s :: %s\n" "file"
-                  (lsp-ltex-plus-doctor--file-link
-                   (lsp-ltex-plus--kind-get kind :global-file))))
-  (insert (format "    - %-12s :: %s\n" "project file"
-                  (lsp-ltex-plus-doctor--file-link
-                   (lsp-ltex-plus--kind-get kind :project-file)))))
+  (dolist (which '((:global-file . "file") (:project-file . "project file")))
+    (let ((variable (lsp-ltex-plus--kind-get kind (car which))))
+      (insert (format "    - %-12s :: %s (~%s~)\n"
+                      (cdr which)
+                      (lsp-ltex-plus-doctor--file-link variable)
+                      variable)))))
 
 (defun lsp-ltex-plus-doctor--settings-line ()
   "Return the settings a check is made with."
-  (list (cons "Language" lsp-ltex-plus-language)
-        (cons "Change delay" (format "%s s" lsp-ltex-plus-change-delay))))
+  (list (cons "Language"
+              (format "%s (~lsp-ltex-plus-language~)" lsp-ltex-plus-language))
+        (cons "Idle delay"
+              (format "%s s (~lsp-ltex-plus-idle-delay~)"
+                      lsp-ltex-plus-idle-delay))))
 
 (defun lsp-ltex-plus-doctor--insert-lists ()
   "Insert the four language-keyed lists, language by language."
@@ -244,22 +256,26 @@ files the entries come from, named and followed."
 (defun lsp-ltex-plus-doctor--logging-line ()
   "Return where each of the four records is going, if anywhere."
   (list (cons "Client log"
-              (if lsp-ltex-plus-debug
-                  "on, in *lsp-ltex-plus log*"
-                "off (~lsp-ltex-plus-debug~)"))
+              (format "%s (~lsp-ltex-plus-debug~)"
+                      (if lsp-ltex-plus-debug
+                          "on, in *lsp-ltex-plus log*"
+                        "off")))
         (cons "Wire record"
-              (cond ((eql lsp-ltex-plus-events-buffer-size 0)
-                     "off (~lsp-ltex-plus-events-buffer-size~)")
-                    ((null lsp-ltex-plus-events-buffer-size)
-                     (format "unlimited, %s, in *ltex-ls-plus events*"
-                             lsp-ltex-plus-events-buffer-format))
-                    (t (format "%d bytes, %s, in *ltex-ls-plus events*"
-                               lsp-ltex-plus-events-buffer-size
-                               lsp-ltex-plus-events-buffer-format))))
+              (format "%s (~lsp-ltex-plus-events-buffer-size~, \
+~lsp-ltex-plus-events-buffer-format~)"
+                      (cond ((eql lsp-ltex-plus-events-buffer-size 0) "off")
+                            ((null lsp-ltex-plus-events-buffer-size)
+                             (format "unlimited, %s, in *ltex-ls-plus events*"
+                                     lsp-ltex-plus-events-buffer-format))
+                            (t (format "%d bytes, %s, in *ltex-ls-plus events*"
+                                       lsp-ltex-plus-events-buffer-size
+                                       lsp-ltex-plus-events-buffer-format)))))
         (cons "Server log file"
-              (or lsp-ltex-plus-server-log-file
-                  "none (~lsp-ltex-plus-server-log-file~)"))
-        (cons "Server log level" lsp-ltex-plus-ltex-ls-log-level)))
+              (format "%s (~lsp-ltex-plus-server-log-file~)"
+                      (or lsp-ltex-plus-server-log-file "none")))
+        (cons "Server log level"
+              (format "%s (~lsp-ltex-plus-ltex-ls-log-level~)"
+                      lsp-ltex-plus-ltex-ls-log-level))))
 
 (defun lsp-ltex-plus-doctor--environment-line ()
   "Return the versions a bug report should carry."

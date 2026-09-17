@@ -121,7 +121,7 @@ runs `post-command-hook', which is what `flymake-mode' itself waits for."
   `(ltex-plus-fake-with-connection
      (ltex-plus-test-with-project (list (cons "note.rst" ,contents))
        (let ((,var (ltex-plus-test-visit (project-file "note.rst")))
-             (lsp-ltex-plus-change-delay 0.1))
+             (lsp-ltex-plus-idle-delay 0.1))
          (with-current-buffer ,var
            (rst-mode)
            (lsp-ltex-plus--flymake-attach)

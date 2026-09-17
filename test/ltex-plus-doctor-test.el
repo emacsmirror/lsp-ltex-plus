@@ -234,7 +234,7 @@ is also the end-to-end check that the id is inherited rather than
 registered as plain text."
   (ltex-plus-fake-with-connection
     (let ((inhibit-message t)
-          (lsp-ltex-plus-change-delay 0.1)
+          (lsp-ltex-plus-idle-delay 0.1)
           (table (copy-sequence lsp-ltex-plus-major-modes)))
       (unwind-protect
           (progn

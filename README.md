@@ -61,7 +61,7 @@ LTeX+ can operate in two distinct ways, depending on your needs:
 
 `lsp-ltex-plus` is fast. On an Apple M2, grammar checking a full-page Markdown or Org buffer completes in about **70 ms**, and a longer LaTeX document (around 15 KB) in about **150 ms** — both comfortably inside the threshold that feels instantaneous while typing.
 
-There is one knob on this side: `lsp-ltex-plus-change-delay` (default 0.5 s), how long after your last keystroke the buffer is sent to the server. Every edit restarts the wait, so a burst of typing is sent once, when it pauses. Lower it for quicker feedback; raise it on a slow machine or for very large files. The server re-checks the whole document on each send, so this is the whole trade-off. Flymake, or flycheck, draws the underlines the moment the server's answer arrives; there is no second cadence to tune.
+There is one knob on this side: `lsp-ltex-plus-idle-delay` (default 0.5 s), how long after your last keystroke the buffer is sent to the server. Every edit restarts the wait, so a burst of typing is sent once, when it pauses. Lower it for quicker feedback; raise it on a slow machine or for very large files. The server re-checks the whole document on each send, so this is the whole trade-off. Flymake, or flycheck, draws the underlines the moment the server's answer arrives; there is no second cadence to tune.
 
 A remote LanguageTool server is noticeably slower: pointed at the hosted service, the round-trip stretches to roughly **1–4 seconds** depending on network conditions and how busy the service is. That is the trade-off for Premium-only rules; the local backend is what most users will want for interactive writing.
 
@@ -283,7 +283,7 @@ For a more robust setup using `use-package` and `straight.el`, you can use the f
   (lsp-ltex-plus-check-programming-languages t)
 
   ;; Send the buffer to the server a little sooner after you stop typing.
-  (lsp-ltex-plus-change-delay 0.3)
+  (lsp-ltex-plus-idle-delay 0.3)
 
   ;; Show the diagnostics through flycheck instead of flymake.  Flycheck
   ;; must be installed; without it flymake is used and a warning says so.
@@ -317,7 +317,7 @@ For a more robust setup using `use-package` and `straight.el`, you can use the f
 ### Key Settings
 - `lsp-ltex-plus-language`: The language variant to check (e.g., `"en-US"`, `"de-DE"`).
 - `lsp-ltex-plus-additional-rules-enable-picky-rules`: Set to `t` if you want stricter grammar checks (e.g., passive voice detection).
-- `lsp-ltex-plus-change-delay`: Seconds of quiet after an edit before the buffer is sent for checking (default `0.5`).
+- `lsp-ltex-plus-idle-delay`: Seconds of quiet after an edit before the buffer is sent for checking (default `0.5`).
 - `lsp-ltex-plus-actions-key`: The key that opens the menu of suggestions (default `C-c "`); `nil` binds nothing.
 - `lsp-ltex-plus-diagnostics-provider`: Which front-end shows the diagnostics, `flymake` (default) or `flycheck`.
 
@@ -369,7 +369,7 @@ With flycheck chosen, turning the mode on selects the `lsp-ltex-plus` checker as
   (flycheck-add-next-checker 'lsp-ltex-plus 'tex-chktex))
 ```
 
-The checker reports what the server has already sent and asks flycheck to check again each time the server publishes, so the errors follow your edits the way the flymake underlines do, at the pace of `lsp-ltex-plus-change-delay`. Each error's id is the rule's id, shown after the message and in the error list's ID column, which is what disabling a rule needs. The LTeX+ menu is the same under either front-end: `C-c "` opens it. `M-x flycheck-verify-setup` shows whether the checker is checking the buffer and whether the server is running.
+The checker reports what the server has already sent and asks flycheck to check again each time the server publishes, so the errors follow your edits the way the flymake underlines do, at the pace of `lsp-ltex-plus-idle-delay`. Each error's id is the rule's id, shown after the message and in the error list's ID column, which is what disabling a rule needs. The LTeX+ menu is the same under either front-end: `C-c "` opens it. `M-x flycheck-verify-setup` shows whether the checker is checking the buffer and whether the server is running.
 
 ### Checking file-less buffers
 
@@ -439,7 +439,7 @@ An empty space means the parameter has no direct counterpart at that layer: typi
 | `lsp-ltex-plus-server-log-file` | R |  | A file for the server to tee the whole exchange and its own log into, through its `--log-file` option. `${PID}` is replaced by the server's process id. A maintainer's instrument — see [Logging](#logging). *Type:* file name or `nil`; *default:* `nil`. | | |
 | `lsp-ltex-plus-major-modes` | A† |  | List of `(major-mode language-id programming-p)` triples driving client activation. *Type:* list; *default:* ~80 entries covering markup and programming modes (defined in `lsp-ltex-plus-bootstrap.el`). | | |
 | `lsp-ltex-plus-actions-key` | L |  | Key that opens the menu of suggestions, `lsp-ltex-plus-actions`. Changing it through Customize rebinds at once. *Type:* key description or `nil` for no binding; *default:* `"C-c \""`. | | |
-| `lsp-ltex-plus-change-delay` | L | X | Seconds of quiet after an edit before the buffer is sent to the server. Every edit restarts the wait. *Type:* number; *default:* `0.5`. | | |
+| `lsp-ltex-plus-idle-delay` | L | X | Seconds of quiet after an edit before the buffer is sent to the server. Every edit restarts the wait. *Type:* number; *default:* `0.5`. | | |
 | `lsp-ltex-plus-check-programming-languages` | A | X | When non-nil, enable grammar checking in comments of programming languages (disabled by default, matching LTeX+). *Type:* boolean; *default:* `nil`. | | |
 | `lsp-ltex-plus-check-fileless-buffers` | A | X | When non-nil, also check buffers with no backing file (e.g. `*scratch*`, capture buffers). See [Checking file-less buffers](#checking-file-less-buffers). *Type:* boolean; *default:* `t`. | | |
 | `lsp-ltex-plus-disable-flyspell` | A | X | When non-nil, turning the mode on in a buffer where `flyspell-mode` is active switches flyspell off, and turning the mode off brings it back — only where this package stopped it. A reminder for anyone running flyspell globally: in a document LTeX+ checks, flyspell flags macro names, identifiers and every proper noun the system dictionary lacks, and its dictionary is not the one you maintain here. *Type:* boolean; *default:* `nil`. | | |
@@ -483,7 +483,7 @@ An empty space means the parameter has no direct counterpart at that layer: typi
 >
 > **"When applied" legend:**
 >
-> - **L** — *Live*: read by the client at the moment it is needed — on every `workspace/configuration` pull, which the server issues before each check, or (for `lsp-ltex-plus-save-additions-to`) at the moment you accept a suggestion, or (for `lsp-ltex-plus-change-delay`) at each edit. A plain `setq` is honoured straight away — no manual notification, no restart.
+> - **L** — *Live*: read by the client at the moment it is needed — on every `workspace/configuration` pull, which the server issues before each check, or (for `lsp-ltex-plus-save-additions-to`) at the moment you accept a suggestion, or (for `lsp-ltex-plus-idle-delay`) at each edit. A plain `setq` is honoured straight away — no manual notification, no restart.
 > - **R** — *Requires server restart*: the server reads the value when it starts. Change the variable, then run `M-x lsp-ltex-plus-restart-server` for it to take effect.
 > - **A** — *Activation-time*: read when `lsp-ltex-plus-mode` turns on in a buffer — neither on every check nor once at setup. A buffer already being checked keeps the value it started with; newly opened buffers, and ones where you toggle the mode off and on again, see the new one. No reload or restart is involved. If you changed the value in a `.dir-locals.el`, revert the buffer instead (`M-x revert-buffer`; Emacs 28 and later also bind `C-x x g` to `revert-buffer-quick`): toggling the mode re-reads the variable but not the file it came from.
 >
@@ -609,7 +609,7 @@ Version 1.0.0 replaced `lsp-mode` with the `jsonrpc` library bundled with Emacs 
 - **`lsp-mode` is no longer needed.** If you installed it only for LTeX+, you can remove it. Anything you set in `lsp-mode` for this client's sake — an entry in `lsp-disabled-clients`, a language-id tweak in `lsp-language-id-configuration`, an `lsp-diagnostics-provider` choice — can go as well; none of it is read.
 - **One key binding.** `lsp-mode` bound the code actions under its own prefix, `C-c l a a`. The menu is now `lsp-ltex-plus-actions` on `C-c "`, set with `lsp-ltex-plus-actions-key`; everything else is called by name (see [Usage](#usage)).
 - **Diagnostics come through flymake.** Under `lsp-mode` they went through flycheck when it was installed. Anything you tuned in flycheck for LTeX+ no longer applies; flymake needs nothing configured.
-- **One knob for responsiveness.** `lsp-idle-delay`, `flycheck-idle-change-delay` and `lsp-debounce-full-sync-notifications-interval` used to decide, between them, how soon after typing the buffer was checked. `lsp-ltex-plus-change-delay` (default 0.5 s) replaces all three.
+- **One knob for responsiveness.** `lsp-idle-delay`, `flycheck-idle-change-delay` and `lsp-debounce-full-sync-notifications-interval` used to decide, between them, how soon after typing the buffer was checked. `lsp-ltex-plus-idle-delay` (default 0.5 s) replaces all three.
 - **Six settings are gone.** Setting one does nothing any more; delete each line:
   - `lsp-ltex-plus-apply-kind-first-patch` patched `lsp-mode`'s message router; the `jsonrpc` library routes correctly and there is nothing to patch.
   - `lsp-ltex-plus-multi-root` asked `lsp-mode` to reuse one server across projects; that is now simply how the connection works — one `ltex-ls-plus` per Emacs session.
@@ -772,7 +772,7 @@ When the server dies, the mode is switched off in every buffer it was checking a
 
 ### Slow Server Response / High CPU Usage
 
-If diagnostics take a long time to appear, the first thing to look at is `lsp-ltex-plus-change-delay`: nothing is sent until you have stopped typing for that long. The `*ltex-ls-plus events*` buffer carries a timestamp on every message, so the time between a `didChange` going out and the `publishDiagnostics` coming back is the server's own share.
+If diagnostics take a long time to appear, the first thing to look at is `lsp-ltex-plus-idle-delay`: nothing is sent until you have stopped typing for that long. The `*ltex-ls-plus events*` buffer carries a timestamp on every message, so the time between a `didChange` going out and the `publishDiagnostics` coming back is the server's own share.
 
 If Emacs itself feels sluggish while the mode is active, increasing the garbage collection threshold reduces the frequency of GC pauses during JSON traffic:
 

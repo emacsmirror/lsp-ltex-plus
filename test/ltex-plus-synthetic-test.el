@@ -40,7 +40,7 @@ document is open on the fake."
   `(ltex-plus-fake-with-connection
      (let ((,var (generate-new-buffer "*ltex-plus-synthetic-test*"))
            (inhibit-message t)
-           (lsp-ltex-plus-change-delay 0.1))
+           (lsp-ltex-plus-idle-delay 0.1))
        (unwind-protect
            (progn
              (with-current-buffer ,var

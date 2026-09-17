@@ -151,7 +151,7 @@ silently do nothing would say it works."
             lsp-ltex-plus-disabled-rules
             lsp-ltex-plus-hidden-false-positives
             lsp-ltex-plus-check-frequency
-            lsp-ltex-plus-change-delay
+            lsp-ltex-plus-idle-delay
             lsp-ltex-plus-diagnostic-severity
             lsp-ltex-plus-check-programming-languages
             lsp-ltex-plus-check-fileless-buffers
@@ -192,6 +192,17 @@ usually nil, which is what a setting reads as before a project sets it."
        (let ((predicate (get symbol 'safe-local-variable))
              (default (default-value symbol)))
          (should (funcall predicate default)))))))
+
+(ert-deftest ltex-plus-safety-test-the-renamed-delay-still-answers-to-its-old-name ()
+  "`lsp-ltex-plus-change-delay' still sets the delay, and still in silence.
+The alias carries the value; the `safe-local-variable' property does not
+follow an alias, so a project file written before the rename would stop
+being trusted and start prompting."
+  (should (safe-local-variable-p 'lsp-ltex-plus-change-delay 0.2))
+  (should (safe-local-variable-p 'lsp-ltex-plus-idle-delay 0.2))
+  (let ((lsp-ltex-plus-idle-delay 0.5))
+    (with-no-warnings (setq lsp-ltex-plus-change-delay 0.9))
+    (should (eql lsp-ltex-plus-idle-delay 0.9))))
 
 (provide 'ltex-plus-safety-test)
 ;;; ltex-plus-safety-test.el ends here

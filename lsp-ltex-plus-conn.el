@@ -616,7 +616,7 @@ are; a new server will be told about them when they next need one."
 ;; the whole text, and the server re-checks the whole document.  What an
 ;; edit changed is therefore irrelevant; when to send is the only
 ;; question, and the answer is a debounce.  Each edit restarts a timer of
-;; `lsp-ltex-plus-change-delay' seconds, so a burst of typing goes out
+;; `lsp-ltex-plus-idle-delay' seconds, so a burst of typing goes out
 ;; once, when it pauses.  A plain timer rather than an idle timer: it
 ;; behaves the same in a batch Emacs, where nothing is ever idle.
 
@@ -627,7 +627,7 @@ Restarts the delay if a send is already pending."
     (when lsp-ltex-plus--change-timer
       (cancel-timer lsp-ltex-plus--change-timer))
     (setq lsp-ltex-plus--change-timer
-          (run-with-timer lsp-ltex-plus-change-delay nil
+          (run-with-timer lsp-ltex-plus-idle-delay nil
                           #'lsp-ltex-plus--send-changes (current-buffer)))))
 
 (defun lsp-ltex-plus--after-change (beg end &rest _)

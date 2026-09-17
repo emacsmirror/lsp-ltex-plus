@@ -541,15 +541,30 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
   :safe #'stringp
   :group 'lsp-ltex-plus)
 
-(defcustom lsp-ltex-plus-change-delay 0.5
+(define-obsolete-variable-alias 'lsp-ltex-plus-change-delay
+  'lsp-ltex-plus-idle-delay "1.1.0")
+
+;; `safe-local-variable' does not follow an alias, so a project whose
+;; `.dir-locals.el' still names the old variable would start asking the
+;; user to approve a value this package has always vouched for.
+(put 'lsp-ltex-plus-change-delay 'safe-local-variable #'numberp)
+
+(defcustom lsp-ltex-plus-idle-delay 0.5
   "Seconds of quiet after an edit before the buffer is sent to the server.
 Every edit restarts the wait, so a burst of typing is sent once, when it
 pauses.  The server re-checks the whole document on each send, so this
 is the one knob that trades responsiveness against work: lower it for
-quicker feedback, raise it on a slow machine or for very large files."
+quicker feedback, raise it on a slow machine or for very large files.
+
+Idle in the ordinary sense -- you stopped typing -- not
+`run-with-idle-timer\='.  The wait is a plain timer, restarted at every
+edit, because Emacs counts as idle only when it is waiting for the
+user, which a batch Emacs never does and a buffer receiving output from
+a process need not."
   :type 'number
   :safe #'numberp
   :group 'lsp-ltex-plus)
+
 
 (defcustom lsp-ltex-plus-clear-diagnostics-when-closing-file t
   "If set to true, diagnostics of a file are cleared when the file is closed."

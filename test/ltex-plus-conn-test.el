@@ -490,7 +490,7 @@ change delay in force."
   (declare (indent 2) (debug (symbolp form body)))
   `(ltex-plus-fake-with-connection
      (ltex-plus-conn-test--with-open-file ,var ,contents
-       (let ((lsp-ltex-plus-change-delay 0.1))
+       (let ((lsp-ltex-plus-idle-delay 0.1))
          (lsp-ltex-plus--open-document ,var)
          (ltex-plus-fake-wait-for
           (lambda () (ltex-plus-fake-received 'textDocument/didOpen)))

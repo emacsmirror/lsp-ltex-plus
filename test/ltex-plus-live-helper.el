@@ -107,7 +107,7 @@ new enough to behave as these tests expect."
   "Set what a batch session needs to talk to the server briskly.
 Only the change delay: the client asks no questions and needs no
 autoloads, so there is nothing else to pre-answer."
-  (setq lsp-ltex-plus-change-delay 0.1))
+  (setq lsp-ltex-plus-idle-delay 0.1))
 
 ;;;; -- Waiting -----------------------------------------------------------------
 

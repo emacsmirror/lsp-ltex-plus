@@ -193,7 +193,7 @@ only come from the checker asking for one."
      (ltex-plus-test-with-project (list (cons "note.rst" ,contents))
        (let ((,var (ltex-plus-test-visit (project-file "note.rst")))
              (lsp-ltex-plus-diagnostics-provider 'flycheck)
-             (lsp-ltex-plus-change-delay 0.1)
+             (lsp-ltex-plus-idle-delay 0.1)
              (inhibit-message t))
          (with-current-buffer ,var
            (rst-mode)

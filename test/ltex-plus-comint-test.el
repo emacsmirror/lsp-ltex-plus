@@ -32,7 +32,7 @@ is on and BODY starts once the document is open."
             (process (make-pipe-process :name "ltex-plus-comint-test" :buffer ,var
                                         :noquery t))
             (inhibit-message t)
-            (lsp-ltex-plus-change-delay 0.1))
+            (lsp-ltex-plus-idle-delay 0.1))
        (unwind-protect
            (progn
              (with-current-buffer ,var
