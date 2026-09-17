@@ -183,12 +183,12 @@ Empty when both are nil, which leaves the JVM to its own defaults."
 (defun lsp-ltex-plus--process-environment ()
   "Return the environment to start the server with.
 The launcher script reads two variables.  `JAVA_HOME' picks the Java,
-and is set from `lsp-ltex-plus-java-path' when that is.  `JAVA_OPTS'
+and is set from `lsp-ltex-plus-java-home' when that is.  `JAVA_OPTS'
 holds options for the JVM; when either heap setting is set, its flag is
 put there, ahead of whatever `JAVA_OPTS' the user already has, so where
 both name the same flag the user's wins.  With neither set, the
 environment is passed through as it is."
-  (let* ((java (lsp-ltex-plus--str lsp-ltex-plus-java-path))
+  (let* ((java (lsp-ltex-plus--str lsp-ltex-plus-java-home))
          (heap (lsp-ltex-plus--heap-options))
          (theirs (getenv "JAVA_OPTS"))
          (env process-environment))

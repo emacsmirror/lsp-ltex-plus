@@ -118,17 +118,31 @@ variable holding its version, and the header is what a release bumps."
          (file-readable-p file)
          (lm-with-file file (lm-header "version")))))
 
+(defun lsp-ltex-plus-doctor--java-home ()
+  "Return (DIRECTORY . SOURCE), the JAVA_HOME the server will be given.
+SOURCE is `setting\=' when `lsp-ltex-plus-java-home\=' names it and
+`environment\=' when Emacs merely has one to pass on -- the client sets
+JAVA_HOME only for the setting, and everything else in the environment
+is inherited by the server as it stands.  Nil when there is no
+JAVA_HOME either way."
+  (cond (lsp-ltex-plus-java-home
+         (cons (directory-file-name
+                (expand-file-name lsp-ltex-plus-java-home))
+               'setting))
+        ((and (getenv "JAVA_HOME")
+              (not (string-empty-p (getenv "JAVA_HOME"))))
+         (cons (directory-file-name (getenv "JAVA_HOME")) 'environment))))
+
 (defun lsp-ltex-plus-doctor--java ()
-  "Return the `java' Emacs would start the server with, or nil.
-`lsp-ltex-plus-java-path' becomes JAVA_HOME, and the launcher runs the
-`java' under it; with the setting unset, the launcher finds `java' the
-way Emacs would.  Resolved, never run: reading the version would start
-a JVM every time the report is written."
-  (if lsp-ltex-plus-java-path
-      (let ((java (expand-file-name
-                   "bin/java" (expand-file-name lsp-ltex-plus-java-path))))
-        (and (file-executable-p java) java))
-    (executable-find "java")))
+  "Return the `java' the server will be started with, or nil.
+Under JAVA_HOME when there is one, from `exec-path\=' when there is
+not.  Resolved, never run: reading the version would start a JVM every
+time the report is written."
+  (let ((home (car (lsp-ltex-plus-doctor--java-home))))
+    (if home
+        (let ((java (expand-file-name "bin/java" home)))
+          (and (file-executable-p java) java))
+      (executable-find "java"))))
 
 (defun lsp-ltex-plus-doctor--requirement (connection version)
   "Say whether VERSION of the server on CONNECTION clears the minimum.
@@ -182,13 +196,17 @@ warning is the user\='s decision rather than a fault."
                          "lsp-ltex-plus-minimum-server-version"
                          "lsp-ltex-plus-require-minimum-server-version")))
           (cons "JAVA_HOME"
-                (concat (if lsp-ltex-plus-java-path
-                            (lsp-ltex-plus-doctor--path
-                             (directory-file-name
-                              (expand-file-name lsp-ltex-plus-java-path)))
-                          "not set by Emacs")
+                (concat (pcase (lsp-ltex-plus-doctor--java-home)
+                          (`(,home . setting)
+                           (format "%s, from your settings"
+                                   (lsp-ltex-plus-doctor--path home)))
+                          (`(,home . environment)
+                           (format "%s, inherited from the environment"
+                                   (lsp-ltex-plus-doctor--path home)))
+                          (_ "none: neither the setting below nor the \
+environment has one"))
                         (lsp-ltex-plus-doctor--options
-                         "lsp-ltex-plus-java-path")))
+                         "lsp-ltex-plus-java-home")))
           (cons "Java"
                 (format "%s [fn:java]"
                         (if (lsp-ltex-plus-doctor--java)

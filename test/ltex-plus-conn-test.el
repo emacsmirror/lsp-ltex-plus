@@ -119,10 +119,10 @@ user who unpacked a release somewhere expects it to do here."
       (should (string-match-p "lsp-ltex-plus-ls-plus-executable" (cadr err))))))
 
 (ert-deftest ltex-plus-conn-test-java-path-becomes-java-home ()
-  "`lsp-ltex-plus-java-path' reaches the launcher script as `JAVA_HOME'."
-  (let ((lsp-ltex-plus-java-path "/opt/java/"))
+  "`lsp-ltex-plus-java-home' reaches the launcher script as `JAVA_HOME'."
+  (let ((lsp-ltex-plus-java-home "/opt/java/"))
     (should (member "JAVA_HOME=/opt/java" (lsp-ltex-plus--process-environment))))
-  (let ((lsp-ltex-plus-java-path nil))
+  (let ((lsp-ltex-plus-java-home nil))
     (should-not (seq-find (lambda (entry) (string-prefix-p "JAVA_HOME=" entry))
                           (seq-difference (lsp-ltex-plus--process-environment)
                                           process-environment)))))

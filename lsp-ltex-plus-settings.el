@@ -435,10 +435,17 @@ The levels in descending order are \"severe\", \"warning\", \"info\",
                  (const "finest"))
   :group 'lsp-ltex-plus)
 
-(defcustom lsp-ltex-plus-java-path nil
-  "Path to an existing Java installation on your computer.
-Use the same path as you would use for the JAVA_HOME environment
-variable.  nil means unset (the bundled or PATH Java is used)."
+(define-obsolete-variable-alias 'lsp-ltex-plus-java-path
+  'lsp-ltex-plus-java-home "1.1.0")
+
+(defcustom lsp-ltex-plus-java-home nil
+  "Java installation to start the server with, or nil for none.
+Exactly what you would put in the JAVA_HOME environment variable, and
+what it is passed to the launcher script as.
+
+nil leaves the environment as Emacs has it: the launcher then uses the
+JAVA_HOME it inherits, if Emacs has one, and otherwise the `java\=' it
+finds on the path -- often the runtime bundled with the server."
   :type '(choice (const :tag "Unset" nil) (directory :tag "Directory"))
   :group 'lsp-ltex-plus)
 

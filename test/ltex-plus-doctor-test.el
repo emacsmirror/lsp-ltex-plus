@@ -345,6 +345,24 @@ project's own buffers are."
       (kill-buffer buffer)
       (delete-directory directory t))))
 
+(ert-deftest ltex-plus-doctor-test-java-home-says-where-it-came-from ()
+  "JAVA_HOME is reported whether Emacs set it or merely inherited it.
+The client exports JAVA_HOME only for its own setting; everything else
+in the environment reaches the server untouched, so a reader with
+JAVA_HOME in their shell would be told \"not set\" about a variable
+that is very much set."
+  (let ((process-environment (copy-sequence process-environment)))
+    (setenv "JAVA_HOME" "/opt/from-the-shell")
+    (let ((lsp-ltex-plus-java-home nil))
+      (should (equal (lsp-ltex-plus-doctor--java-home)
+                     '("/opt/from-the-shell" . environment))))
+    (let ((lsp-ltex-plus-java-home "/opt/from-the-setting/"))
+      (should (equal (lsp-ltex-plus-doctor--java-home)
+                     '("/opt/from-the-setting" . setting))))
+    (setenv "JAVA_HOME" nil)
+    (let ((lsp-ltex-plus-java-home nil))
+      (should-not (lsp-ltex-plus-doctor--java-home)))))
+
 ;;;; -- On a server -------------------------------------------------------------
 
 (ert-deftest ltex-plus-doctor-test-the-document-is-opened-as-org ()

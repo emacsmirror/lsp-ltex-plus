@@ -110,7 +110,7 @@ LTeX+ is a Java application. By default, the server uses the Java runtime bundle
   ```elisp
   (use-package lsp-ltex-plus
     :custom
-    (lsp-ltex-plus-java-path "/path/to/your/java/home"))
+    (lsp-ltex-plus-java-home "/path/to/your/java/home"))
   ```
 
 ### 4. Make it Discoverable
@@ -467,7 +467,7 @@ An empty space means the parameter has no direct counterpart at that layer: typi
 | `lsp-ltex-plus-lt-api-key` | L | X | API key for LanguageTool Premium API access. Only relevant when `lsp-ltex-plus-lt-server-uri` is set. *Type:* `nil` or string; *default:* `nil`. | X | X |
 | `lsp-ltex-plus-ltex-ls-path` | R |  | Path to the root directory of ltex-ls-plus (contains `bin` and `lib` subdirectories); its `bin` is searched for the executable. *Type:* `nil` or string; *default:* `nil` (use the executable found on `PATH`). | X | |
 | `lsp-ltex-plus-ltex-ls-log-level` | R |  | Logging level (verbosity) of the ltex-ls-plus server log. *Choices* (descending verbosity): `"severe"`, `"warning"`, `"info"`, `"config"`, `"fine"` (default), `"finer"`, `"finest"`. | X | |
-| `lsp-ltex-plus-java-path` | R |  | Path to an existing Java installation (same value you would use for `JAVA_HOME`), passed to the server's launcher as such. *Type:* `nil` or string; *default:* `nil` (use the bundled JRE). | X | |
+| `lsp-ltex-plus-java-home` | R |  | The Java installation to start the server with — exactly what you would put in `JAVA_HOME`, and what the launcher is given. Unset, the server inherits the `JAVA_HOME` Emacs itself has, and failing that uses the `java` on the path, often the runtime bundled with the server. Renamed from `lsp-ltex-plus-java-path` in 1.1.0; the old name still works. *Type:* `nil` or string; *default:* `nil`. | X | |
 | `lsp-ltex-plus-java-initial-heap` | R |  | Initial size of the Java heap in megabytes, passed to the launcher as `-Xms` when set. *Type:* `nil` or integer; *default:* `nil` (the JVM decides). | | |
 | `lsp-ltex-plus-java-max-heap` | R |  | Maximum size of the Java heap in megabytes, passed to the launcher as `-Xmx` when set. Left unset, the JVM takes a quarter of the machine's memory, which is ample; a fixed cap is for machines where that is too much, and 512 is too little for two languages at once. *Type:* `nil` or integer; *default:* `nil` (the JVM decides). | | |
 | `lsp-ltex-plus-sentence-cache-size` | R |  | Size of the LanguageTool `ResultCache` in sentences. The default and recommended value `0` disables the local LanguageTool server's own cache entirely: ltex-ls-plus keeps its own per-paragraph cache (see `lsp-ltex-plus-paragraph-cache-enabled`), which supersedes LanguageTool's caching. Use a positive value to turn it back on, but be aware that for the edit loop this is redundant and only adds CPU and memory overhead with no additional benefit. To restore LanguageTool's caching instead, set this positive and also set `lsp-ltex-plus-paragraph-cache-enabled` to nil. *Type:* integer; *default:* `0`. | X | X |
