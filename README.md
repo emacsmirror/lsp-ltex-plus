@@ -1,5 +1,12 @@
 # Emacs LTeX+
 
+![Made for GNU Emacs](https://img.shields.io/badge/Made%20for-GNU%20Emacs-7F5AB6?logo=gnuemacs&logoColor=white)
+[![MELPA](https://melpa.org/packages/lsp-ltex-plus-badge.svg)](https://melpa.org/#/lsp-ltex-plus)
+[![MELPA Stable](https://stable.melpa.org/packages/lsp-ltex-plus-badge.svg)](https://stable.melpa.org/#/lsp-ltex-plus)
+[![melpazoid](https://github.com/ltex-plus/emacs-ltex-plus/actions/workflows/melpazoid.yml/badge.svg)](https://github.com/ltex-plus/emacs-ltex-plus/actions/workflows/melpazoid.yml)
+[![CI](https://github.com/ltex-plus/emacs-ltex-plus/actions/workflows/ci.yml/badge.svg)](https://github.com/ltex-plus/emacs-ltex-plus/actions/workflows/ci.yml)
+[![License: MPL-2.0](https://img.shields.io/github/license/ltex-plus/emacs-ltex-plus)](LICENSE)
+
 <!-- ltex: language=en-GB -->
 <!-- ltex: dictionary+=plist -->
 <!-- ltex: dictionary+=defcustom -->
