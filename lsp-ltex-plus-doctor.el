@@ -105,6 +105,18 @@ variable holding its version, and the header is what a release bumps."
          (file-readable-p file)
          (lm-with-file file (lm-header "version")))))
 
+(defun lsp-ltex-plus-doctor--java ()
+  "Return the `java' Emacs would start the server with, or nil.
+`lsp-ltex-plus-java-path' becomes JAVA_HOME, and the launcher runs the
+`java' under it; with the setting unset, the launcher finds `java' the
+way Emacs would.  Resolved, never run: reading the version would start
+a JVM every time the report is written."
+  (if lsp-ltex-plus-java-path
+      (let ((java (expand-file-name
+                   "bin/java" (expand-file-name lsp-ltex-plus-java-path))))
+        (and (file-executable-p java) java))
+    (executable-find "java")))
+
 (defun lsp-ltex-plus-doctor--server-line ()
   "Return what is known about the server binary and the running server."
   (let* ((executable (lsp-ltex-plus--server-executable))
@@ -114,8 +126,8 @@ variable holding its version, and the header is what a release bumps."
          (version (and info (plist-get info :version))))
     (list (cons "Executable"
                 (or executable
-                    (format "not found -- `%s' is not on `exec-path'; \
-set `lsp-ltex-plus-ls-plus-executable'"
+                    (format "not found -- =%s= is not on ~exec-path~; \
+set ~lsp-ltex-plus-ls-plus-executable~"
                             lsp-ltex-plus-ls-plus-executable)))
           (cons "Full version label"
                 (cond ((not connection) "no server is running")
@@ -136,10 +148,16 @@ set `lsp-ltex-plus-ls-plus-executable'"
                                 version lsp-ltex-plus-minimum-server-version)
                                " (met)")
                               (t " (NOT met)"))))
-          (cons "Java"
+          (cons "JAVA_HOME"
                 (if lsp-ltex-plus-java-path
-                    (format "JAVA_HOME=%s" lsp-ltex-plus-java-path)
-                  "whatever the launcher finds (usually its bundled runtime)"))
+                    (format "%s, from ~lsp-ltex-plus-java-path~"
+                            (directory-file-name
+                             (expand-file-name lsp-ltex-plus-java-path)))
+                  "not set by Emacs"))
+          (cons "Java"
+                (format "%s -- what Emacs resolves; the launcher script can \
+export a JAVA_HOME of its own, and often does"
+                        (or (lsp-ltex-plus-doctor--java) "none found")))
           (cons "Heap"
                 (let ((options (lsp-ltex-plus--heap-options)))
                   (if options
@@ -228,10 +246,10 @@ files the entries come from, named and followed."
   (list (cons "Client log"
               (if lsp-ltex-plus-debug
                   "on, in *lsp-ltex-plus log*"
-                "off (`lsp-ltex-plus-debug')"))
+                "off (~lsp-ltex-plus-debug~)"))
         (cons "Wire record"
               (cond ((eql lsp-ltex-plus-events-buffer-size 0)
-                     "off (`lsp-ltex-plus-events-buffer-size')")
+                     "off (~lsp-ltex-plus-events-buffer-size~)")
                     ((null lsp-ltex-plus-events-buffer-size)
                      (format "unlimited, %s, in *ltex-ls-plus events*"
                              lsp-ltex-plus-events-buffer-format))
@@ -240,7 +258,7 @@ files the entries come from, named and followed."
                                lsp-ltex-plus-events-buffer-format))))
         (cons "Server log file"
               (or lsp-ltex-plus-server-log-file
-                  "none (`lsp-ltex-plus-server-log-file')"))
+                  "none (~lsp-ltex-plus-server-log-file~)"))
         (cons "Server log level" lsp-ltex-plus-ltex-ls-log-level)))
 
 (defun lsp-ltex-plus-doctor--environment-line ()
@@ -267,8 +285,8 @@ Everything here is inside the region the first magic comment disables,
 so none of it is offered to the server as prose."
   (insert "#+title: LTeX+ doctor\n"
           "#+options: toc:nil\n\n"
-          "  g  write this report again    r  restart the server\n"
-          "  q  bury this buffer           C-c \"  fix the mistake at point\n\n")
+          "  =g=  write this report again    =r=  restart the server\n"
+          "  =q=  bury this buffer           =C-c \"=  fix the mistake at point\n\n")
   (lsp-ltex-plus-doctor--insert-section "Server"
                                         (lsp-ltex-plus-doctor--server-line))
   (lsp-ltex-plus-doctor--insert-section "Connection"
@@ -285,7 +303,7 @@ so none of it is offered to the server as prose."
   (insert "* Settings for one project only\n"
           "  This report shows the global settings.  To check one project\n"
           "  with different settings -- another language, a longer\n"
-          "  dictionary -- write those settings into a `.dir-locals.el'\n"
+          "  dictionary -- write those settings into a =.dir-locals.el=\n"
           "  file in the top directory of the project.  LTeX+ answers the\n"
           "  server from the buffer being checked, so every buffer under\n"
           "  that directory is checked with the settings of the project.\n"
@@ -346,7 +364,13 @@ after the magic comment that disabled it for the report."
     (insert "* " label "\n")
     (let ((overlay (lsp-ltex-plus-doctor--make-overlay))
           (beg (point-marker)))
-      (insert "  " text "\n\n")
+      (insert "  " text "\n")
+      ;; Filled, so that the sample reads in a plain window: the doctor
+      ;; buffer is not one the user came to configure line wrapping for.
+      (let ((fill-column 72)
+            (fill-prefix "  "))
+        (fill-region beg (point)))
+      (insert "\n")
       ;; Insertion type nil, both markers: the sections after this one
       ;; are inserted at exactly this point, and an end marker that
       ;; advanced with them would swallow their findings.
@@ -375,7 +399,7 @@ above." 'face 'error))
      ((plist-get section :timed-out)
       (propertize (format "  no answer after %d seconds: the server may have \
 run out of memory while loading this language.  Raise \
-`lsp-ltex-plus-java-max-heap\='." lsp-ltex-plus-doctor-timeout)
+~lsp-ltex-plus-java-max-heap~." lsp-ltex-plus-doctor-timeout)
                   'face 'warning))
      (t (propertize "  waiting for LTeX+ to answer.  Loading a language \
 model takes a few seconds." 'face 'shadow)))))
