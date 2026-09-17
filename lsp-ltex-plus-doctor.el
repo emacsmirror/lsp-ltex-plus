@@ -664,14 +664,14 @@ each log is going."
       ;; The mode may have declined -- no server, an old one -- and the
       ;; sections must say that rather than claim to be waiting.
       (lsp-ltex-plus-doctor--show-status)
-      ;; The report was written before the handshake, so it could only
-      ;; say that no server was running.  Write it again once one is,
-      ;; or the version the user came here to read is the one thing
-      ;; missing from it.
+      ;; The report was written before this buffer was opened on the
+      ;; server -- and, with no server running, before there was one to
+      ;; report.  Write it again once the document is open: the queue is
+      ;; first in, first out, so the `didOpen' above has gone by then,
+      ;; and the report counts itself.
       (let ((connection (lsp-ltex-plus--live-connection))
             (buffer (current-buffer)))
-        (when (and connection
-                   (not (lsp-ltex-plus--connection-ready connection)))
+        (when connection
           (lsp-ltex-plus--when-ready
            connection
            (lambda ()
