@@ -665,7 +665,7 @@ Keys in the doctor buffer: `g` writes the report again, `r` restarts the server,
 
 Run it inside a project and the report is that project's: the doctor applies the directory-local settings of the directory it was called from, so a `.dir-locals.el` naming another language is both what the report shows and what the samples are checked with.
 
-**The report is read-only; the examples are not.** Those single letters are the report's keys, and in the examples they type themselves, so the samples are yours to edit: break them further, write your own sentence, and watch what comes back. `C-c "` opens the suggestions menu on the mistake at point and applies a replacement there — which makes this buffer the place to learn the menu before using it on your own writing. To check a fourth language, add an entry to `lsp-ltex-plus-doctor-samples`.
+**The report is read-only; the examples are not.** Those single letters are the report's keys, and in the examples they type themselves, so the samples stay editable: break them further, write your own sentence, and watch what comes back. `C-c "` opens the suggestions menu on the mistake at point and applies a replacement there — which makes this buffer the place to learn the menu before using it on your own writing. To check a fourth language, add an entry to `lsp-ltex-plus-doctor-samples`.
 
 ### Server Not Found
 

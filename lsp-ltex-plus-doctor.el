@@ -484,8 +484,8 @@ so none of it is offered to the server as prose."
           "  =C-c \"=  fix the mistake at point (in the examples below)\n"
           "  =q=  bury this buffer\n\n"
           "  The report is read-only, and those letters are its keys.  The\n"
-          "  examples at the end are yours: type in them, break them further,\n"
-          "  and watch what comes back.\n\n")
+          "  examples at the end are editable: type in them, break them\n"
+          "  further, and watch what comes back.\n\n")
   (lsp-ltex-plus-doctor--insert-section
    "Server" (lsp-ltex-plus-doctor--server-line)
    '(("java" . "The java Emacs resolves, from JAVA_HOME when that is set
