@@ -185,6 +185,44 @@ warning is the user\='s decision rather than a fault."
                               (string-join options " ")
                             "the JVM's own default")))))))
 
+(defconst lsp-ltex-plus-doctor--documents-shown 5
+  "How many open documents the report names before counting the rest.")
+
+(defun lsp-ltex-plus-doctor--document-link (buffer)
+  "Return BUFFER as an org link, or as verbatim text if it visits no file.
+A file-visiting buffer is linked through its file, which opens this very
+buffer again; a buffer with no file -- this report, a capture, a shell --
+has nothing org could link to, so its name is written plainly."
+  (let ((file (buffer-file-name buffer)))
+    (if file
+        (format "[[file:%s][%s]]" file (buffer-name buffer))
+      (format "=%s=" (buffer-name buffer)))))
+
+(defun lsp-ltex-plus-doctor--documents ()
+  "Return the live buffers the server is holding documents for.
+Sorted by name, so that writing the report again does not shuffle the
+list under the reader."
+  (let (buffers)
+    (maphash (lambda (_uri buffer)
+               (when (buffer-live-p buffer) (push buffer buffers)))
+             lsp-ltex-plus--documents)
+    (sort buffers (lambda (a b) (string< (buffer-name a) (buffer-name b))))))
+
+(defun lsp-ltex-plus-doctor--documents-value ()
+  "Return the documents open on the server, counted and named.
+The names, not only the count: the question a reader brings to this row
+is whether the file they are writing is being checked, and a number
+cannot answer it."
+  (let* ((buffers (lsp-ltex-plus-doctor--documents))
+         (shown (seq-take buffers lsp-ltex-plus-doctor--documents-shown))
+         (rest (- (length buffers) (length shown))))
+    (concat (format "%d" (length buffers))
+            (mapconcat (lambda (buffer)
+                         (concat "\n    - "
+                                 (lsp-ltex-plus-doctor--document-link buffer)))
+                       shown "")
+            (if (> rest 0) (format "\n    - and %d more" rest) ""))))
+
 (defun lsp-ltex-plus-doctor--connection-line ()
   "Return what is known about the connection to the server."
   (let ((connection (lsp-ltex-plus--live-connection)))
@@ -203,7 +241,7 @@ handshake complete")
           ;; which is a different statement from "there is no server".
           (cons "Documents open"
                 (if connection
-                    (format "%d" (hash-table-count lsp-ltex-plus--documents))
+                    (lsp-ltex-plus-doctor--documents-value)
                   "--")))))
 
 (defun lsp-ltex-plus-doctor--buffer-line ()

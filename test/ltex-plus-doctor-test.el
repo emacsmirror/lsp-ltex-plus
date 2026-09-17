@@ -249,6 +249,30 @@ spite of the warning is a decision, not a fault."
       (should (eq face 'warning))
       (should (string-match-p "used anyway" text)))))
 
+(ert-deftest ltex-plus-doctor-test-the-open-documents-are-named-and-capped ()
+  "The row names the documents on the server, five, and counts the rest.
+A reader comes to this row asking whether the file they are writing is
+being checked; a bare number cannot answer that, and fifty names would
+bury the rest of the report."
+  (let ((lsp-ltex-plus--documents (make-hash-table :test #'equal))
+        (buffers nil))
+    (unwind-protect
+        (progn
+          (dotimes (i 7)
+            (let ((buffer (generate-new-buffer (format "doc-%d" i))))
+              (push buffer buffers)
+              (puthash (format "uri-%d" i) buffer lsp-ltex-plus--documents)))
+          (let* ((value (lsp-ltex-plus-doctor--documents-value))
+                 (lines (split-string value "\n")))
+            (should (equal (car lines) "7"))
+            (should (= 5 (seq-count (lambda (line)
+                                      (string-prefix-p "    - =doc-" line))
+                                    lines)))
+            ;; Sorted, so writing the report again keeps the order.
+            (should (equal (nth 1 lines) "    - =doc-0="))
+            (should (string-match-p "and 2 more" value))))
+      (mapc #'kill-buffer buffers))))
+
 ;;;; -- On a server -------------------------------------------------------------
 
 (ert-deftest ltex-plus-doctor-test-the-document-is-opened-as-org ()
