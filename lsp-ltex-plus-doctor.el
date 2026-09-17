@@ -785,6 +785,23 @@ where a letter is a command and where it is a letter."
   ;; example would inherit the read-only property and be refused.
   (put-text-property (1- end) end 'rear-nonsticky '(read-only)))
 
+(defun lsp-ltex-plus-doctor--display-settings ()
+  "Give the buffer the display this report is written for.
+Set when the report is written, not in the mode body: a major mode runs
+its own body before `org-mode-hook\=', so a reader whose hook sets
+`fill-column\=' -- or a project whose =.dir-locals.el= does -- would
+decide the width of a page whose line breaks are already written, and
+the samples would be filled to one width beside prose wrapped at
+another.
+
+This page is the package\='s, not the reader\='s: its line breaks are
+chosen for links shown as their descriptions, and a path holding an
+underscore must not be rendered as a subscript.  TAB and
+`org-toggle-link-display\=' undo any of it in one keystroke."
+  (setq-local fill-column lsp-ltex-plus-doctor-fill-column)
+  (setq-local org-pretty-entities nil)
+  (setq-local org-link-descriptive t))
+
 (defun lsp-ltex-plus-doctor--project-settings ()
   "Apply the directory-local settings of `default-directory\=' here.
 This buffer visits no file, so Emacs applies none by itself.  The
@@ -815,6 +832,7 @@ section per sample, each switching the language for what follows it."
         report-end
         samples)
     (lsp-ltex-plus-doctor--project-settings)
+    (lsp-ltex-plus-doctor--display-settings)
     (setq samples (lsp-ltex-plus-doctor--ordered-samples))
     (lsp-ltex-plus-doctor--cancel-timer)
     (lsp-ltex-plus-doctor--delete-overlays)
@@ -937,16 +955,8 @@ reads the magic comments in it.  The language id is inherited through
   ;; file is visited -- and this buffer visits none, and is written
   ;; after the mode has started.  Set the variable too, so that the
   ;; report shows the text it was given.
-  ;; This page is written by the package, not by the reader: its line
-  ;; breaks are chosen for a link shown as its description, and a path
-  ;; holding an underscore must not be rendered as a subscript.  A
-  ;; reader who prefers raw URLs or folded headings prefers them in
-  ;; documents they wrote and know; here they would be reading a layout
-  ;; built for other settings.  `org-toggle-link-display' and TAB are
-  ;; still one keystroke away.
-  (setq-local org-pretty-entities nil)
-  (setq-local org-link-descriptive t)
-  (setq-local fill-column lsp-ltex-plus-doctor-fill-column)
+  ;; The display this page needs is set when it is written, not here:
+  ;; see `lsp-ltex-plus-doctor--display-settings'.
   ;; The buffer visits no file, and a user who switched file-less
   ;; checking off did not mean this buffer.  Buffer-local rather than a
   ;; binding around the call: it has to hold for every later check too,
