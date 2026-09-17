@@ -126,9 +126,10 @@ the whole exchange written to a file by the server itself, and
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-events-buffer-size 0
-  "Bytes of the exchange with the server to keep in the events buffer.
+  "Characters of the exchange with the server to keep in the events buffer.
 Handed to jsonrpc, which keeps that record in `*ltex-ls-plus events*\\=' and
-eats the oldest lines to stay within the number given here.
+eats the oldest lines to stay within the number given here.  Characters
+rather than bytes: jsonrpc measures with `buffer-size\\='.
 
 Zero, the default, records nothing: the buffer is created and stays
 empty.  A grammar checker sends the whole document on every pause in

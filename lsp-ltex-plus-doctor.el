@@ -456,18 +456,21 @@ can be resolved before there is a server."
   "Return where each of the four records is going, if anywhere."
   (list (cons "Client log"
               (concat (if lsp-ltex-plus-debug
-                          "on, in *lsp-ltex-plus log*"
+                          "on, in =*lsp-ltex-plus log*="
                         "off")
                       (lsp-ltex-plus-doctor--options "lsp-ltex-plus-debug")))
-        (cons "Wire record"
+        (cons "Log LSP events"
               (concat
-               (cond ((eql lsp-ltex-plus-events-buffer-size 0) "off")
-                     ((null lsp-ltex-plus-events-buffer-size)
-                      (format "unlimited, %s, in *ltex-ls-plus events*"
-                              lsp-ltex-plus-events-buffer-format))
-                     (t (format "%d bytes, %s, in *ltex-ls-plus events*"
-                                lsp-ltex-plus-events-buffer-size
-                                lsp-ltex-plus-events-buffer-format)))
+               (if (eql lsp-ltex-plus-events-buffer-size 0)
+                   "off"
+                 (format "on, %s -- %s, in =*ltex-ls-plus events*="
+                         (if lsp-ltex-plus-events-buffer-size
+                             (format "keeping the last %d characters"
+                                     lsp-ltex-plus-events-buffer-size)
+                           "keeping everything")
+                         (if (eq lsp-ltex-plus-events-buffer-format 'full)
+                             "each message with its JSON"
+                           "one line per message")))
                (lsp-ltex-plus-doctor--options
                 "lsp-ltex-plus-events-buffer-size"
                 "lsp-ltex-plus-events-buffer-format")))
