@@ -438,6 +438,30 @@ which fails in a batch Emacs."
       (should-not (lsp-ltex-plus--document-open-p buffer))
       (should (zerop (hash-table-count lsp-ltex-plus--documents))))))
 
+(ert-deftest ltex-plus-conn-test-a-long-accented-document-arrives-intact ()
+  "A document with accents survives however the stream is chunked.
+jsonrpc decodes nothing itself -- the process's coding system does, so
+a connection opened as `binary\=' mangles a character that a chunk
+boundary falls inside.  It takes both to show the fault: accents, and a
+document long enough to be split, which is why it survived every test
+here until the doctor's own buffer went through the fake, and then only
+on the machines where the split fell in the wrong place.
+
+This cannot fail on an Emacs whose jsonrpc decodes for itself (1.0.29,
+Emacs 32): it is a guard for 29.1 to 30.2, where the process is asked
+to do it and a connection opened as binary hands jsonrpc raw bytes --
+\"unable to decode byte 0xc1\" is what that looks like from inside
+`json-parse-buffer\='."
+  (let ((text (mapconcat #'identity
+                         (make-list 200 "Fatigué des fautes d'ortographe ? \
+Müde von dummen Rechtschreibfelern? Naïve café, jamás, größer.")
+                         "\n")))
+    (should (> (string-bytes text) 8192))
+    (ltex-plus-conn-test--with-open-document buffer text
+      (let* ((params (car (ltex-plus-fake-received 'textDocument/didOpen)))
+             (sent (plist-get (plist-get params :textDocument) :text)))
+        (should (equal sent text))))))
+
 (ert-deftest ltex-plus-conn-test-language-id-comes-from-the-table ()
   "A listed mode sends its id; an unlisted one is sent as plain text."
   (with-temp-buffer

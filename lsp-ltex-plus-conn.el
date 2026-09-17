@@ -210,6 +210,12 @@ connection called NAME, which is how the two end up coupled."
                   :command command
                   :connection-type 'pipe
                   :noquery t
+                  ;; Explicitly, as eglot does: jsonrpc leaves the
+                  ;; decoding to the process, and the protocol is UTF-8.
+                  ;; Left to `default-process-coding-system', a machine
+                  ;; in a non-UTF-8 locale would mangle every accented
+                  ;; character on its way to the server.
+                  :coding 'utf-8-emacs-unix
                   :stderr (get-buffer-create (format "*%s stderr*" name)))))
 
 (defun lsp-ltex-plus--events-buffer-initargs (size &optional format)

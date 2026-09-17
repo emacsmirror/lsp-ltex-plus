@@ -232,7 +232,12 @@ Stops a fake that is already up, and resets everything it records."
                               :host "127.0.0.1"
                               :service t
                               :noquery t
-                              :coding 'binary
+                              ;; UTF-8, not binary: jsonrpc does no
+                              ;; decoding of its own, so a document with
+                              ;; an accented character in it arrives
+                              ;; mangled when a chunk boundary falls
+                              ;; inside that character.
+                              :coding 'utf-8-emacs-unix
                               :sentinel #'ltex-plus-fake--accept))
   (process-contact ltex-plus-fake-listener :service))
 
@@ -254,7 +259,7 @@ server would have been started with."
                         :host "127.0.0.1"
                         :service (process-contact ltex-plus-fake-listener :service)
                         :noquery t
-                        :coding 'binary))
+                        :coding 'utf-8-emacs-unix))
 
 (defmacro ltex-plus-fake-with-connection (&rest body)
   "Run BODY with the client under test able to connect to the fake.
