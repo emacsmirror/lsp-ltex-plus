@@ -284,7 +284,8 @@ files the entries come from, named and followed."
 Everything here is inside the region the first magic comment disables,
 so none of it is offered to the server as prose."
   (insert "#+title: LTeX+ doctor\n"
-          "#+options: toc:nil\n\n"
+          "#+options: toc:nil\n"
+          "#+startup: entitiesplain\n\n"
           "  =g=  write this report again    =r=  restart the server\n"
           "  =q=  bury this buffer           =C-c \"=  fix the mistake at point\n\n")
   (lsp-ltex-plus-doctor--insert-section "Server"
@@ -525,6 +526,11 @@ reads the magic comments in it.  The language id is inherited through
 `lsp-ltex-plus--mode-entry', so this mode is not listed in
 `lsp-ltex-plus-major-modes' and nothing is written there on its behalf."
   (setq-local revert-buffer-function #'lsp-ltex-plus-doctor-refresh)
+  ;; The buffer says `#+startup: entitiesplain', which org reads when a
+  ;; file is visited -- and this buffer visits none, and is written
+  ;; after the mode has started.  Set the variable too, so that the
+  ;; report shows the text it was given.
+  (setq-local org-pretty-entities nil)
   ;; The buffer visits no file, and a user who switched file-less
   ;; checking off did not mean this buffer.  Buffer-local rather than a
   ;; binding around the call: it has to hold for every later check too,
