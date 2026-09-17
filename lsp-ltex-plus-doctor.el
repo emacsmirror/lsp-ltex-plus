@@ -318,11 +318,32 @@ files the entries come from, named and followed."
 
 ;;;; -- The report --------------------------------------------------------------
 
+(defun lsp-ltex-plus-doctor--insert-faced (string)
+  "Insert STRING at point, keeping the faces STRING carries.
+As overlays, not as text: this buffer is fontified by org, and
+font-lock removes the `face\=' property from the text it fontifies, so a
+value coloured with `propertize\=' goes back to plain the moment the
+window is redisplayed.  An overlay is left alone."
+  (let ((start (point))
+        (pos 0))
+    (insert string)
+    (while (< pos (length string))
+      (let ((next (or (next-single-property-change pos 'face string)
+                      (length string)))
+            (face (get-text-property pos 'face string)))
+        (when face
+          (let ((overlay (make-overlay (+ start pos) (+ start next))))
+            (overlay-put overlay 'face face)
+            (overlay-put overlay 'lsp-ltex-plus-doctor t)))
+        (setq pos next)))))
+
 (defun lsp-ltex-plus-doctor--insert-section (title rows)
   "Insert an org heading TITLE followed by ROWS as a description list."
   (insert "* " title "\n")
   (pcase-dolist (`(,label . ,value) rows)
-    (insert (format "  - %-22s :: %s\n" label value)))
+    (insert (format "  - %-22s :: " label))
+    (lsp-ltex-plus-doctor--insert-faced value)
+    (insert "\n"))
   (insert "\n"))
 
 (defun lsp-ltex-plus-doctor--insert-report ()
