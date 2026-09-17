@@ -127,9 +127,10 @@ a JVM every time the report is written."
     (list (cons "Executable"
                 (format "%s (~lsp-ltex-plus-ls-plus-executable~, \
 ~lsp-ltex-plus-ltex-ls-path~)"
-                        (or executable
-                            (format "not found -- =%s= is not on ~exec-path~"
-                                    lsp-ltex-plus-ls-plus-executable))))
+                        (if executable
+                            (lsp-ltex-plus-doctor--path executable)
+                          (format "not found -- =%s= is not on ~exec-path~"
+                                  lsp-ltex-plus-ls-plus-executable))))
           (cons "Full version label"
                 (cond ((not connection) "no server is running")
                       (version (format "%s %s"
@@ -153,13 +154,17 @@ a JVM every time the report is written."
           (cons "JAVA_HOME"
                 (format "%s (~lsp-ltex-plus-java-path~)"
                         (if lsp-ltex-plus-java-path
-                            (directory-file-name
-                             (expand-file-name lsp-ltex-plus-java-path))
+                            (lsp-ltex-plus-doctor--path
+                             (directory-file-name
+                              (expand-file-name lsp-ltex-plus-java-path)))
                           "not set by Emacs")))
           (cons "Java"
                 (format "%s -- resolved by Emacs, not guaranteed: the \
 launcher script can export a JAVA_HOME of its own"
-                        (or (lsp-ltex-plus-doctor--java) "none found")))
+                        (if (lsp-ltex-plus-doctor--java)
+                            (lsp-ltex-plus-doctor--path
+                             (lsp-ltex-plus-doctor--java))
+                          "none found")))
           (cons "Heap"
                 (format "%s (~lsp-ltex-plus-java-initial-heap~, \
 ~lsp-ltex-plus-java-max-heap~)"
@@ -178,9 +183,8 @@ needs checking starts it")
 handshake complete")
                       (t "starting -- the handshake has not finished")))
           (cons "Root"
-                (if connection
-                    (lsp-ltex-plus--connection-root connection)
-                  "--"))
+                (lsp-ltex-plus-doctor--path
+                 (and connection (lsp-ltex-plus--connection-root connection))))
           (cons "Documents open"
                 (format "%d" (hash-table-count lsp-ltex-plus--documents))))))
 
@@ -204,14 +208,22 @@ Emacs does not have (~lsp-ltex-plus-diagnostics-provider~)"
                                lsp-ltex-plus-diagnostics-provider))))
         (cons "Checked" (if lsp-ltex-plus-mode "yes" "no"))))
 
-(defun lsp-ltex-plus-doctor--file-link (variable)
-  "Return an org link to the file VARIABLE names, or why there is none."
-  (let ((file (symbol-value variable)))
-    (cond ((not file) "not specified")
-          ((file-readable-p file)
-           (format "[[file:%s][%s]]" (expand-file-name file)
-                   (file-name-nondirectory file)))
-          (t (format "%s (not written yet)" (abbreviate-file-name file))))))
+(defun lsp-ltex-plus-doctor--file-link (file)
+  "Return an org link to FILE, or a note that FILE is nil.
+A link even when the file is not there yet -- the link says which file
+is meant and opens it, and a path written out instead would start with
+the `~\=' of a home directory, which org reads as the start of inline
+code and renders to the next tilde in the line."
+  (if (not file)
+      "not specified"
+    (format "[[file:%s][%s]]%s"
+            (expand-file-name file)
+            (file-name-nondirectory file)
+            (if (file-readable-p file) "" " (not written yet)"))))
+
+(defun lsp-ltex-plus-doctor--path (path)
+  "Return PATH as org verbatim, so that no part of PATH is read as markup."
+  (if path (format "=%s=" path) "--"))
 
 (defun lsp-ltex-plus-doctor--insert-list (kind title unit)
   "Insert what KIND holds, called TITLE and counted in UNIT.
@@ -232,7 +244,7 @@ files the entries come from, named and followed."
     (let ((variable (lsp-ltex-plus--kind-get kind (car which))))
       (insert (format "    - %-12s :: %s (~%s~)\n"
                       (cdr which)
-                      (lsp-ltex-plus-doctor--file-link variable)
+                      (lsp-ltex-plus-doctor--file-link (symbol-value variable))
                       variable)))))
 
 (defun lsp-ltex-plus-doctor--settings-line ()
@@ -272,7 +284,12 @@ files the entries come from, named and followed."
                                        lsp-ltex-plus-events-buffer-format)))))
         (cons "Server log file"
               (format "%s (~lsp-ltex-plus-server-log-file~)"
-                      (or lsp-ltex-plus-server-log-file "none")))
+                      (if lsp-ltex-plus-server-log-file
+                          ;; Verbatim, not a link: the name may hold the
+                          ;; server's `${PID}', which is no file yet.
+                          (lsp-ltex-plus-doctor--path
+                           lsp-ltex-plus-server-log-file)
+                        "none")))
         (cons "Server log level"
               (format "%s (~lsp-ltex-plus-ltex-ls-log-level~)"
                       lsp-ltex-plus-ltex-ls-log-level))))
