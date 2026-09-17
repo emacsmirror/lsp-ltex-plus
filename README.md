@@ -16,6 +16,8 @@ This package gives you professional-grade grammar checking in Emacs while you wr
 ![LTeX+ in action](screenshot.jpg)
 *LTeX+ in action: `C-c "` offers the server's suggestions, allowing you to choose the suitable correction (e.g., fixing "your" to "you're" in the example above). The key is `lsp-ltex-plus-actions-key`.*
 
+**Start with `M-x lsp-ltex-plus-doctor`.** It opens one page that says which server you are running, which LanguageTool is behind it, and what every setting is set to — and then checks itself, in three languages, on paragraphs that are wrong on purpose. If grammar checking works, you see it working; if it does not, the page says what is missing. See [Start here](#start-here-m-x-lsp-ltex-plus-doctor).
+
 For detailed information about the underlying LTeX+ server and its capabilities, please refer to the [official LTeX+ documentation](https://ltex-plus.github.io/ltex-plus/index.html).
 
 ## New to Emacs or LSP?
@@ -47,6 +49,7 @@ LTeX+ can operate in two distinct ways, depending on your needs:
 
 ## Features
 
+- **Says What It Is Doing:** `M-x lsp-ltex-plus-doctor` reports the server, the LanguageTool behind it, the connection, every setting in force and where each log goes — a bug report you can copy whole — and checks itself on deliberate mistakes in three languages, so "is it working?" is answered by watching it work.
 - **Runs Beside Anything:** Diagnostics go through flymake, whose list of backends is buffer-local and takes many. LTeX+ sits beside whatever `texlab`, `pyright` or any other server installed — under `eglot` or `lsp-mode` alike — with no priority to arrange. Flycheck users can have the diagnostics there instead, with one setting.
 - **Smart Persistence:** Words you "add to dictionary" or rules you disable are automatically saved to your Emacs directory and remembered across sessions.
 - **Per-project Lists:** A project can keep its own dictionary and rule lists in its `.dir-locals.el`, merged with your global ones.
