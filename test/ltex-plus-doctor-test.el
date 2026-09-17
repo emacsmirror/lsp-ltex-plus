@@ -266,10 +266,11 @@ bury the rest of the report."
                  (lines (split-string value "\n")))
             (should (equal (car lines) "7"))
             (should (= 5 (seq-count (lambda (line)
-                                      (string-prefix-p "    - =doc-" line))
+                                      (string-prefix-p "    - [[ltex-buffer:doc-"
+                                                       line))
                                     lines)))
             ;; Sorted, so writing the report again keeps the order.
-            (should (equal (nth 1 lines) "    - =doc-0="))
+            (should (equal (nth 1 lines) "    - [[ltex-buffer:doc-0][doc-0]]"))
             (should (string-match-p "and 2 more" value))))
       (mapc #'kill-buffer buffers))))
 

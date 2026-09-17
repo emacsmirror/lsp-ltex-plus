@@ -188,15 +188,33 @@ warning is the user\='s decision rather than a fault."
 (defconst lsp-ltex-plus-doctor--documents-shown 5
   "How many open documents the report names before counting the rest.")
 
+(defun lsp-ltex-plus-doctor--follow-buffer (name _)
+  "Show the buffer called NAME.  Follows an `ltex-buffer:\=' link."
+  (let ((buffer (get-buffer name)))
+    (if buffer
+        (pop-to-buffer-same-window buffer)
+      (message "[lsp-ltex-plus] There is no buffer named %s any more" name))))
+
+;; Org has no link type for a buffer, and `elisp:\=' asks the user to
+;; confirm every time it is followed, which is worse than a plain name.
+;; This one is ours, and named so.
+(org-link-set-parameters "ltex-buffer"
+                         :follow #'lsp-ltex-plus-doctor--follow-buffer)
+
 (defun lsp-ltex-plus-doctor--document-link (buffer)
-  "Return BUFFER as an org link, or as verbatim text if it visits no file.
-A file-visiting buffer is linked through its file, which opens this very
-buffer again; a buffer with no file -- this report, a capture, a shell --
-has nothing org could link to, so its name is written plainly."
-  (let ((file (buffer-file-name buffer)))
-    (if file
-        (format "[[file:%s][%s]]" file (buffer-name buffer))
-      (format "=%s=" (buffer-name buffer)))))
+  "Return BUFFER as an org link, marking the report the reader is in.
+A buffer with a file is linked through the file; one without -- this
+report, a capture, a shell -- through `ltex-buffer:\=', the link type
+above.  Built with `org-link-make-string\=', which escapes a buffer name
+holding the brackets org would otherwise read as the end of the link."
+  (let* ((file (buffer-file-name buffer))
+         (name (buffer-name buffer))
+         (link (org-link-make-string
+                (concat (if file "file:" "ltex-buffer:") (or file name))
+                name)))
+    (if (eq buffer (current-buffer))
+        (concat link " (this buffer)")
+      link)))
 
 (defun lsp-ltex-plus-doctor--documents ()
   "Return the live buffers the server is holding documents for.
