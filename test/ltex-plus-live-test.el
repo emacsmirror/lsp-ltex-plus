@@ -479,6 +479,51 @@ would be deleted after a grace period and show up here as a warning."
      (lambda () (null (ltex-plus-live-test--server-processes)))
      "the server process to end")))
 
+;;;; -- The server's own log file -----------------------------------------------
+
+(ltex-plus-live-deftest ltex-plus-live-test-the-server-writes-the-log-file
+    "`lsp-ltex-plus-server-log-file' makes the server tee the exchange.
+The option is the server's own `--log-file', so nothing in Emacs writes
+that file and nothing offline can show that it is written at all.  Three
+claims need the real binary: that the argument survives the launcher
+script and reaches the JVM, that the server -- not the client -- expands
+`${PID}' in the name, and that what lands there is both directions of
+the conversation, as the server's help promises, rather than one."
+  (ltex-plus-live-test--setup)
+  (let* ((directory (file-name-as-directory (make-temp-file "ltex-plus-live-log-" t)))
+         (lsp-ltex-plus-server-log-file (concat directory "ltex-${PID}.log")))
+    (unwind-protect
+        (progn
+          ;; Read when the server starts, so the server this test reads
+          ;; the log of has to be one started after the option was set.
+          (when (lsp-ltex-plus--live-connection)
+            (let ((inhibit-message t)) (lsp-ltex-plus-shutdown-server)))
+          (ltex-plus-live-open
+           (ltex-plus-live-write "logged.md" "He go to school.\n"))
+          (let ((file (ltex-plus-live-until
+                       (lambda () (car (directory-files directory t "\\.log\\'")))
+                       "the server to create its log file")))
+            ;; A client that had expanded the name itself would leave the
+            ;; literal `${PID}' here, and the file would still exist.
+            (should (string-match-p "/ltex-[0-9]+\\.log\\'" file))
+            (let ((contents
+                   (ltex-plus-live-until
+                    (lambda ()
+                      (let ((text (with-temp-buffer
+                                    (insert-file-contents file)
+                                    (buffer-string))))
+                        (and (string-match-p "textDocument/didOpen" text)
+                             (string-match-p "textDocument/publishDiagnostics" text)
+                             text)))
+                    "both directions of the conversation to reach the log file")))
+              ;; The payloads are there too, which is the whole point of
+              ;; the file and the reason it is not the events buffer.
+              (should (string-match-p "He go to school" contents)))))
+      ;; Leave no server writing into a directory about to be deleted.
+      (when (lsp-ltex-plus--live-connection)
+        (let ((inhibit-message t)) (lsp-ltex-plus-shutdown-server)))
+      (delete-directory directory t))))
+
 ;; Shut the server down once, however the run ended.
 (add-hook 'kill-emacs-hook #'ltex-plus-live-teardown)
 
