@@ -117,30 +117,25 @@ variable holding its version, and the header is what a release bumps."
                     (format "not found -- `%s' is not on `exec-path'; \
 set `lsp-ltex-plus-ls-plus-executable'"
                             lsp-ltex-plus-ls-plus-executable)))
-          (cons "Reports itself as"
-                (cond ((not connection) "nothing yet -- no server is running")
+          (cons "Full version label"
+                (cond ((not connection) "no server is running")
                       (version (format "%s %s"
                                        (or (plist-get info :name) "ltex-ls")
                                        version))
-                      (t "nothing: only ltex-ls-plus 18.7.0 and newer report \
-a version, so this server is older")))
-          (cons "Version compared"
-                (let ((number (lsp-ltex-plus--version-number version)))
-                  (cond ((not connection) "--")
-                        ((not number) "none to compare")
-                        (t (format "%s -- the leading numbers of the version \
-above, which is what the minimum below is compared against" number)))))
+                      (t "none: servers before 18.7.0 report no version")))
+          (cons "Detected version"
+                (or (lsp-ltex-plus--version-number version)
+                    (if connection "none" "--")))
           (cons "Minimum version"
-                (format "%s -- %s%s"
+                (format "%s, %s%s"
                         lsp-ltex-plus-minimum-server-version
                         (if lsp-ltex-plus-require-minimum-server-version
-                            "an older server is stopped"
-                          "an older server is used anyway, with a warning")
+                            "required" "not required")
                         (cond ((not connection) "")
                               ((lsp-ltex-plus--version-at-least-p
                                 version lsp-ltex-plus-minimum-server-version)
-                               "; this server is new enough")
-                              (t "; this server is too old"))))
+                               " (met)")
+                              (t " (NOT met)"))))
           (cons "Java"
                 (if lsp-ltex-plus-java-path
                     (format "JAVA_HOME=%s" lsp-ltex-plus-java-path)
@@ -155,8 +150,8 @@ above, which is what the minimum below is compared against" number)))))
   "Return what is known about the connection to the server."
   (let ((connection (lsp-ltex-plus--live-connection)))
     (list (cons "State"
-                (cond ((not connection) "not running: LTeX+ starts the \
-server with the first buffer that needs checking")
+                (cond ((not connection) "not running; the first buffer that \
+needs checking starts it")
                       ((lsp-ltex-plus--connection-ready connection) "live, \
 handshake complete")
                       (t "starting -- the handshake has not finished")))
@@ -182,28 +177,51 @@ Emacs does not have" lsp-ltex-plus--attached-provider
                        lsp-ltex-plus-diagnostics-provider))))
         (cons "Checked" (if lsp-ltex-plus-mode "yes" "no"))))
 
-(defun lsp-ltex-plus-doctor--count (kind)
-  "Return how many entries KIND holds in total, across every language.
-The global list: the defcustom merged with the file, which is what the
-server is told about every document.  A project can add to it, and does
-not show here -- see the last section of the report."
-  (cl-loop for (_language entries) on (lsp-ltex-plus--global-plist kind)
-           by #'cddr
-           sum (length entries)))
+(defun lsp-ltex-plus-doctor--file-link (variable)
+  "Return an org link to the file VARIABLE names, or why there is none."
+  (let ((file (symbol-value variable)))
+    (cond ((not file) "not specified")
+          ((file-readable-p file)
+           (format "[[file:%s][%s]]" (expand-file-name file)
+                   (file-name-nondirectory file)))
+          (t (format "%s (not written yet)" (abbreviate-file-name file))))))
+
+(defun lsp-ltex-plus-doctor--insert-list (kind title unit)
+  "Insert what KIND holds, called TITLE and counted in UNIT.
+A line per language, so that a total nobody can break down -- 41 words,
+in which languages? -- is not all the report has to say, and the two
+files the entries come from, named and followed."
+  (insert (format "  - %s\n" title))
+  (let ((entries (lsp-ltex-plus--global-plist kind)))
+    (if (null entries)
+        (insert "    - empty\n")
+      (cl-loop for (language items) on entries by #'cddr
+               for count = (length items)
+               do (insert (format "    - %-12s :: %d %s\n"
+                                  (substring (symbol-name language) 1)
+                                  count
+                                  (if (= count 1) (substring unit 0 -1) unit))))))
+  (insert (format "    - %-12s :: %s\n" "file"
+                  (lsp-ltex-plus-doctor--file-link
+                   (lsp-ltex-plus--kind-get kind :global-file))))
+  (insert (format "    - %-12s :: %s\n" "project file"
+                  (lsp-ltex-plus-doctor--file-link
+                   (lsp-ltex-plus--kind-get kind :project-file)))))
 
 (defun lsp-ltex-plus-doctor--settings-line ()
   "Return the settings a check is made with."
   (list (cons "Language" lsp-ltex-plus-language)
-        (cons "Change delay" (format "%s s" lsp-ltex-plus-change-delay))
-        (cons "Dictionary" (format "%d word(s)"
-                                   (lsp-ltex-plus-doctor--count 'dictionary)))
-        (cons "Disabled rules"
-              (format "%d" (lsp-ltex-plus-doctor--count 'disabled-rules)))
-        (cons "Enabled rules"
-              (format "%d" (lsp-ltex-plus-doctor--count 'enabled-rules)))
-        (cons "Hidden false positives"
-              (format "%d"
-                      (lsp-ltex-plus-doctor--count 'hidden-false-positives)))))
+        (cons "Change delay" (format "%s s" lsp-ltex-plus-change-delay))))
+
+(defun lsp-ltex-plus-doctor--insert-lists ()
+  "Insert the four language-keyed lists, language by language."
+  (insert "* Words and rules\n")
+  (lsp-ltex-plus-doctor--insert-list 'dictionary "Dictionary" "words")
+  (lsp-ltex-plus-doctor--insert-list 'disabled-rules "Disabled rules" "rules")
+  (lsp-ltex-plus-doctor--insert-list 'enabled-rules "Enabled rules" "rules")
+  (lsp-ltex-plus-doctor--insert-list 'hidden-false-positives
+                                     "Hidden false positives" "patterns")
+  (insert "\n"))
 
 (defun lsp-ltex-plus-doctor--logging-line ()
   "Return where each of the four records is going, if anywhere."
@@ -259,6 +277,7 @@ so none of it is offered to the server as prose."
                                         (lsp-ltex-plus-doctor--buffer-line))
   (lsp-ltex-plus-doctor--insert-section "Settings"
                                         (lsp-ltex-plus-doctor--settings-line))
+  (lsp-ltex-plus-doctor--insert-lists)
   (lsp-ltex-plus-doctor--insert-section "Logging"
                                         (lsp-ltex-plus-doctor--logging-line))
   (lsp-ltex-plus-doctor--insert-section "Environment"
