@@ -42,6 +42,12 @@ answer is that nothing was sent, which is a different test."
   (setq-local lsp-ltex-plus-mode t)
   (lsp-ltex-plus-doctor--show-status))
 
+(defun ltex-plus-doctor-test--status-string (label)
+  "Return the status of the section called LABEL, faces and all."
+  (let ((section (seq-find (lambda (s) (equal (plist-get s :label) label))
+                           lsp-ltex-plus-doctor--sections)))
+    (or (overlay-get (plist-get section :overlay) 'after-string) "")))
+
 (defun ltex-plus-doctor-test--status (label)
   "Return the status shown for the section called LABEL."
   (let ((section (seq-find (lambda (s) (equal (plist-get s :label) label))
@@ -190,6 +196,34 @@ that names nothing of ours."
                  (seq-count (lambda (overlay)
                               (overlay-get overlay 'lsp-ltex-plus-doctor))
                             (overlays-in (point-min) (point-max))))))))
+
+(ert-deftest ltex-plus-doctor-test-the-states-are-a-traffic-light ()
+  "Answered is `success\=', still waiting is `warning\=', failed is `error\='.
+Named faces, so a theme decides the colours; what is pinned here is
+which of the three a state belongs to -- a failed check must not be
+painted the same as one that is merely slow."
+  (cl-flet ((face-of (label)
+              ;; The status opens with an unpropertized blank line, so
+              ;; the face starts where the sentence does.
+              (let ((status (ltex-plus-doctor-test--status-string label)))
+                (get-text-property
+                 (or (next-single-property-change 0 'face status) 0)
+                 'face status))))
+    (ltex-plus-doctor-test--with-report
+      ;; Never sent: red.
+      (should (eq (face-of "German") 'error))
+      (ltex-plus-doctor-test--pretend-checked)
+      ;; Sent, no answer yet: amber, and the normal state of a cold
+      ;; server for a few seconds.
+      (should (eq (face-of "German") 'warning))
+      ;; Given up on: red, because the heap it names needs raising.
+      (lsp-ltex-plus-doctor--give-up (current-buffer))
+      (should (eq (face-of "German") 'error))
+      ;; Answered: green.
+      (setq lsp-ltex-plus--diagnostics
+            (list (ltex-plus-doctor-test--diagnostic-on "Rechtschreibfelern")))
+      (lsp-ltex-plus-doctor--on-diagnostics (current-buffer))
+      (should (eq (face-of "German") 'success)))))
 
 ;;;; -- On a server -------------------------------------------------------------
 

@@ -389,10 +389,15 @@ after the magic comment that disabled it for the report."
                      'face 'success))
         ((not lsp-ltex-plus-mode)
          (propertize "  LTeX+ sent nothing" 'face 'error))
-        (t (propertize "  waiting for the first answer" 'face 'shadow))))
+        (t (propertize "  waiting for the first answer" 'face 'warning))))
 
 (defun lsp-ltex-plus-doctor--status (section)
   "Return the line to show under SECTION\='s paragraph.
+Three states, read at a glance: `success\=' for an answer that came
+back, `warning\=' while an answer is still out -- which is the normal
+state of a cold server for a few seconds -- and `error\=' for a check
+that failed or was never sent.  Named faces, never colours, so the
+user\='s theme decides what each one looks like.
 A sentence below the text the sentence is about, rather than a tag
 beside the heading: the reader has just read the paragraph and is
 looking at the end of it.  Set off by a blank line, so that the verdict
@@ -409,9 +414,9 @@ section above." 'face 'error))
             (propertize (format "No answer after %d seconds: the server may \
 have run out of memory while loading this language.  Raise \
 ~lsp-ltex-plus-java-max-heap~." lsp-ltex-plus-doctor-timeout)
-                        'face 'warning))
+                        'face 'error))
            (t (propertize "Waiting for LTeX+ to answer.  Loading a language \
-model takes a few seconds." 'face 'shadow)))
+model takes a few seconds." 'face 'warning)))
           "\n"))
 
 (defun lsp-ltex-plus-doctor--show-status ()
