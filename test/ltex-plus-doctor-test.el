@@ -371,6 +371,24 @@ that is very much set."
     (let ((lsp-ltex-plus-java-home nil))
       (should-not (lsp-ltex-plus-doctor--java-home)))))
 
+(ert-deftest ltex-plus-doctor-test-undo-cannot-unmake-the-report ()
+  "Undo reaches a reader's own edit and stops there.
+Writing the report is an edit like any other as far as Emacs is
+concerned, so without this the first `undo\=' in an example takes the
+page apart instead of the word just typed."
+  (ltex-plus-doctor-test--with-report
+    (should (null buffer-undo-list))
+    (ltex-plus-doctor-test--pretend-checked)
+    (goto-char (marker-position
+                (plist-get (car lsp-ltex-plus-doctor--sections) :beg)))
+    (insert "typo ")
+    (should (string-match-p "typo " (buffer-string)))
+    (primitive-undo 1 buffer-undo-list)
+    (should-not (string-match-p "typo " (buffer-string)))
+    ;; And the report is still there to be read.
+    (should (string-match-p "\\* Examples" (buffer-string)))
+    (should (string-match-p "Minimum version" (buffer-string)))))
+
 ;;;; -- On a server -------------------------------------------------------------
 
 (ert-deftest ltex-plus-doctor-test-the-document-is-opened-as-org ()

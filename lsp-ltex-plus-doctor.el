@@ -717,6 +717,10 @@ settings."
 The report first, kept out of the check by a magic comment, then one
 section per sample, each switching the language for what follows it."
   (let ((inhibit-read-only t)
+        ;; Writing the report is not an edit anyone should be able to
+        ;; take back: a reader who undoes a change of their own in an
+        ;; example would otherwise watch the page come apart instead.
+        (buffer-undo-list t)
         report-end
         samples)
     (lsp-ltex-plus-doctor--project-settings)
@@ -768,7 +772,12 @@ advanced-usage.html#magic-comments][magic comment]]: it sets the language for th
     (setq lsp-ltex-plus-doctor--timer
           (run-at-time lsp-ltex-plus-doctor-timeout nil
                        #'lsp-ltex-plus-doctor--give-up (current-buffer)))
-    (goto-char (point-min))))
+    (goto-char (point-min)))
+  ;; Recording starts again here, from an empty history: the first
+  ;; thing that can be undone is the reader's own first edit.  The
+  ;; verdicts that arrive later are overlays and change no text, so
+  ;; nothing the server says lands in the history either.
+  (setq buffer-undo-list nil))
 
 ;;;; -- The mode and its commands -----------------------------------------------
 
