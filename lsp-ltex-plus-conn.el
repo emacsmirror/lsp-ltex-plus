@@ -435,7 +435,7 @@ Each is the protocol's diagnostic object, a plist, untouched; see the
 Diagnostics section below for reading positions out of one.")
 
 (defvar-local lsp-ltex-plus--diagnostic-places nil
-  "Cache for `lsp-ltex-plus--diagnostic-places': (DIAGNOSTICS . PLACES).
+  "Cache for the function of the same name: (DIAGNOSTICS . PLACES).
 DIAGNOSTICS is the very list object PLACES were computed for -- a
 publish stores a new list -- and `lsp-ltex-plus--after-change' clears
 the cache, so a stale entry is never read.")

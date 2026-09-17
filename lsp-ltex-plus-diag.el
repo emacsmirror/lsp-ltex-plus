@@ -57,8 +57,9 @@ what a user needs when deciding to disable the rule."
 (defun lsp-ltex-plus--flymake-diagnostic (diagnostic &optional buffer region)
   "Return the flymake diagnostic for the protocol DIAGNOSTIC in BUFFER.
 BUFFER defaults to the current buffer.  REGION is (BEG . END), where
-DIAGNOSTIC is, when the caller has it from `lsp-ltex-plus--diagnostic-places';
-otherwise it is computed for this one diagnostic.  The protocol object
+DIAGNOSTIC is, when the caller has it from the function
+`lsp-ltex-plus--diagnostic-places'; otherwise it is computed for this
+one diagnostic.  The protocol object
 rides along as the diagnostic's data, so a code action at point can
 find the diagnostics it applies to."
   (let ((buffer (or buffer (current-buffer))))

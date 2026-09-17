@@ -93,9 +93,9 @@ Counted in the widened buffer, which is where flycheck resolves them."
 (defun lsp-ltex-plus--flycheck-error (diagnostic &optional buffer place)
   "Return the flycheck error for the protocol DIAGNOSTIC in BUFFER.
 BUFFER defaults to the current buffer.  PLACE is (BEG END BEG-LINE
-END-LINE), where DIAGNOSTIC is, when the caller has it from
-`lsp-ltex-plus--diagnostic-places'; otherwise it is computed for this
-one diagnostic.  The range is carried as a start and an end line and
+END-LINE), where DIAGNOSTIC is, when the caller has it from the
+function `lsp-ltex-plus--diagnostic-places'; otherwise it is computed
+for this one diagnostic.  The range is carried as a start and an end line and
 column, which flycheck highlights exactly; the rule id goes in the
 error's own id field, where flycheck shows it after the message."
   (let ((buffer (or buffer (current-buffer))))
