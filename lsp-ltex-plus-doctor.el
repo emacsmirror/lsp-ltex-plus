@@ -281,6 +281,49 @@ cannot answer it."
                        shown "")
             (if (> rest 0) (format "\n    - and %d more" rest) ""))))
 
+(defun lsp-ltex-plus-doctor--languagetool-line ()
+  "Return which LanguageTool does the checking, and how it is reached.
+Worth a section of its own: the same document checked by the bundled
+LanguageTool and by the hosted one comes back with different mistakes,
+so a report that did not say which was in use would explain nothing."
+  (list (cons "Checker"
+              (concat (if lsp-ltex-plus-lt-server-uri
+                          (format "%s, over the network"
+                                  (lsp-ltex-plus-doctor--path
+                                   lsp-ltex-plus-lt-server-uri))
+                        "the one bundled with the server, offline")
+                      (lsp-ltex-plus-doctor--options
+                       "lsp-ltex-plus-lt-server-uri")))
+        (cons "Account"
+              ;; Whether, never what: this report is written to be
+              ;; pasted into a bug report, and an API key or an address
+              ;; pasted along with it is a key or an address published.
+              (concat (cond ((and lsp-ltex-plus-lt-username
+                                  lsp-ltex-plus-lt-api-key)
+                             "a username and an API key are set")
+                            (lsp-ltex-plus-lt-api-key
+                             "an API key is set, no username")
+                            (lsp-ltex-plus-lt-username
+                             "a username is set, no API key")
+                            (t "none"))
+                      (when (and (not lsp-ltex-plus-lt-server-uri)
+                                 (or lsp-ltex-plus-lt-username
+                                     lsp-ltex-plus-lt-api-key))
+                        " -- and unused, since no server URI is set")
+                      (lsp-ltex-plus-doctor--options
+                       "lsp-ltex-plus-lt-username"
+                       "lsp-ltex-plus-lt-api-key")))
+        (cons "Picky rules"
+              (concat (if lsp-ltex-plus-additional-rules-enable-picky-rules
+                          "on" "off")
+                      (lsp-ltex-plus-doctor--options
+                       "lsp-ltex-plus-additional-rules-enable-picky-rules")))
+        (cons "Mother tongue"
+              (concat (or lsp-ltex-plus-additional-rules-mother-tongue
+                          "not set")
+                      (lsp-ltex-plus-doctor--options
+                       "lsp-ltex-plus-additional-rules-mother-tongue")))))
+
 (defun lsp-ltex-plus-doctor--connection-line ()
   "Return what is known about the connection to the server."
   (let ((connection (lsp-ltex-plus--live-connection)))
@@ -495,6 +538,8 @@ so none of it is offered to the server as prose."
 and otherwise from ~exec-path~.  Not a guarantee: the executable above
 may be a launcher script rather than the language server itself, and
 such a script can export a JAVA_HOME of its own.")))
+  (lsp-ltex-plus-doctor--insert-section
+   "LanguageTool" (lsp-ltex-plus-doctor--languagetool-line))
   (lsp-ltex-plus-doctor--insert-section "Connection"
                                         (lsp-ltex-plus-doctor--connection-line))
   (lsp-ltex-plus-doctor--insert-section "This buffer"

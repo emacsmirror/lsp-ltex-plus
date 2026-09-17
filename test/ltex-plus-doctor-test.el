@@ -389,6 +389,37 @@ page apart instead of the word just typed."
     (should (string-match-p "\\* Examples" (buffer-string)))
     (should (string-match-p "Minimum version" (buffer-string)))))
 
+(ert-deftest ltex-plus-doctor-test-the-account-is-reported-without-being-shown ()
+  "The report says an account is configured, never what it is.
+The buffer is written to be pasted into a bug report, so an API key or
+an address printed here is a key or an address published.  Whether the
+checking is done by the bundled LanguageTool or over the network does
+belong in it: the same document comes back with different mistakes."
+  (let ((lsp-ltex-plus-lt-server-uri "https://api.languagetoolplus.com")
+        (lsp-ltex-plus-lt-username "someone@example.org")
+        (lsp-ltex-plus-lt-api-key "s3cret"))
+    (let ((rows (lsp-ltex-plus-doctor--languagetool-line)))
+      (should (string-match-p "api.languagetoolplus.com"
+                              (cdr (assoc "Checker" rows))))
+      (should (string-match-p "username and an API key"
+                              (cdr (assoc "Account" rows))))
+      (dolist (row rows)
+        (should-not (string-match-p "s3cret" (cdr row)))
+        (should-not (string-match-p "someone@example.org" (cdr row))))))
+  ;; Credentials that cannot be used say so; none at all says nothing.
+  (let ((lsp-ltex-plus-lt-server-uri nil)
+        (lsp-ltex-plus-lt-username "someone@example.org")
+        (lsp-ltex-plus-lt-api-key nil))
+    (should (string-match-p
+             "unused" (cdr (assoc "Account"
+                                  (lsp-ltex-plus-doctor--languagetool-line))))))
+  (let ((lsp-ltex-plus-lt-server-uri nil)
+        (lsp-ltex-plus-lt-username nil)
+        (lsp-ltex-plus-lt-api-key nil))
+    (should-not (string-match-p
+                 "unused" (cdr (assoc "Account"
+                                      (lsp-ltex-plus-doctor--languagetool-line)))))))
+
 ;;;; -- On a server -------------------------------------------------------------
 
 (ert-deftest ltex-plus-doctor-test-the-document-is-opened-as-org ()
