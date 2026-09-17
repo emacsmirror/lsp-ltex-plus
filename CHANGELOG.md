@@ -1,6 +1,6 @@
 # Change Log
 
-## [Unreleased]
+## [1.1.0] - 2026-09-17
 
 ### Changed
 - **Nothing is logged by default any more.** The `*ltex-ls-plus events*` buffer recorded every message with its full JSON, capped at two megabytes. A grammar checker sends the whole document on every pause in typing, so on a 50 KB document that record grew by 50 KB every few seconds and the cap then ate its own beginning -- the handshake and the first configuration pulls, the part of a session worth reading -- to make room for another forty copies of your text. `lsp-ltex-plus-events-buffer-size` now defaults to `0`, which records nothing, and the whole exchange has a better home in `lsp-ltex-plus-server-log-file` (below).
