@@ -505,11 +505,14 @@ NOTES are (LABEL . TEXT) org footnote definitions, written after the
 rows: a caveat that has to be said once belongs under the section, not
 in the middle of a line the reader is scanning."
   (insert "* " title "\n")
-  (pcase-dolist (`(,label . ,value) rows)
-    ;; Wide enough for the longest label, so every `::' lines up.
-    (insert (format "  - %-23s :: " label))
-    (lsp-ltex-plus-doctor--insert-faced value)
-    (insert "\n"))
+  ;; Aligned within the section, not across the report: one long label
+  ;; in one section would otherwise indent every value in the buffer,
+  ;; pushing the long ones into a second line for nothing.
+  (let ((width (apply #'max (mapcar (lambda (row) (length (car row))) rows))))
+    (pcase-dolist (`(,label . ,value) rows)
+      (insert (format "  - %s :: " (string-pad label width)))
+      (lsp-ltex-plus-doctor--insert-faced value)
+      (insert "\n")))
   (when notes
     (insert "\n")
     ;; Column zero, which is where org looks for a definition.
