@@ -458,7 +458,7 @@ Everything here is inside the region the first magic comment disables,
 so none of it is offered to the server as prose."
   (insert "#+title: LTeX+ doctor\n"
           "#+options: toc:nil\n"
-          "#+startup: entitiesplain descriptivelinks\n\n"
+          "#+startup: entitiesplain\n\n"
           "  =g=  write this report again\n"
           "  =r=  restart the server\n"
           "  =v=  show the setting behind each value\n"
@@ -805,12 +805,12 @@ reads the magic comments in it.  The language id is inherited through
   ;; file is visited -- and this buffer visits none, and is written
   ;; after the mode has started.  Set the variable too, so that the
   ;; report shows the text it was given.
+  ;; Not a preference but the values: a path holding an underscore is
+  ;; rendered as a subscript with pretty entities on, and a path is
+  ;; there to be read and copied.  Links are left alone -- org hides a
+  ;; URL behind its description by default, and a reader who turned
+  ;; that off wants to see URLs here too.
   (setq-local org-pretty-entities nil)
-  ;; A URL in this report is noise; the description is the point.  The
-  ;; `#+startup:' line says the same for a copy saved to a file, which
-  ;; org reads only when it visits one.  `org-toggle-link-display'
-  ;; shows the URLs again.
-  (setq-local org-link-descriptive t)
   ;; The buffer visits no file, and a user who switched file-less
   ;; checking off did not mean this buffer.  Buffer-local rather than a
   ;; binding around the call: it has to hold for every later check too,
