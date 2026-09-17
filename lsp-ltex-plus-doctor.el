@@ -288,10 +288,10 @@ LanguageTool and by the hosted one comes back with different mistakes,
 so a report that did not say which was in use would explain nothing."
   (list (cons "Checker"
               (concat (if lsp-ltex-plus-lt-server-uri
-                          (format "%s, over the network"
+                          (format "over the network, at %s"
                                   (lsp-ltex-plus-doctor--path
                                    lsp-ltex-plus-lt-server-uri))
-                        "the one bundled with the server, offline")
+                        "local and offline -- the one built into ltex-ls-plus")
                       (lsp-ltex-plus-doctor--options
                        "lsp-ltex-plus-lt-server-uri")))
         (cons "Account"
