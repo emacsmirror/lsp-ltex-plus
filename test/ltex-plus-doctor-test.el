@@ -420,6 +420,34 @@ belong in it: the same document comes back with different mistakes."
                  "unused" (cdr (assoc "Account"
                                       (lsp-ltex-plus-doctor--languagetool-line)))))))
 
+(ert-deftest ltex-plus-doctor-test-the-log-file-is-the-one-being-written ()
+  "The report resolves the log file the running server actually writes.
+`${PID}\=' and a directory name are both filled in by the server, so
+neither can be resolved before there is one -- and once there is, the
+reader wants the file, not the pattern."
+  (let* ((process (start-process "ltex-plus-doctor-test" nil "sleep" "30"))
+         (pid (process-id process))
+         (directory (file-name-as-directory (make-temp-file "ltex-log-" t))))
+    (unwind-protect
+        (cl-letf (((symbol-function 'lsp-ltex-plus--live-connection)
+                   (lambda () 'connection))
+                  ((symbol-function 'jsonrpc--process) (lambda (_) process)))
+          (let ((lsp-ltex-plus-server-log-file
+                 (expand-file-name "ltex-${PID}.log" directory)))
+            (should (equal (lsp-ltex-plus-doctor--server-log-file)
+                           (expand-file-name (format "ltex-%d.log" pid)
+                                             directory))))
+          ;; A directory: the server names the file after itself inside it.
+          (let ((lsp-ltex-plus-server-log-file directory))
+            (should (equal (lsp-ltex-plus-doctor--server-log-file)
+                           (expand-file-name (format "ltex-ls-%d.log" pid)
+                                             directory)))))
+      (delete-process process)
+      (delete-directory directory t))
+    ;; With no server there is no process id, so nothing to resolve.
+    (let ((lsp-ltex-plus-server-log-file "/tmp/ltex-${PID}.log"))
+      (should-not (lsp-ltex-plus-doctor--server-log-file)))))
+
 ;;;; -- On a server -------------------------------------------------------------
 
 (ert-deftest ltex-plus-doctor-test-the-document-is-opened-as-org ()

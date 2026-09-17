@@ -432,6 +432,26 @@ files the entries come from, named and followed."
                                      "Hidden false positives" "patterns")
   (insert "\n"))
 
+(defun lsp-ltex-plus-doctor--server-log-file ()
+  "Return the file the running server is writing its log to, or nil.
+`lsp-ltex-plus-server-log-file\=' is what the server was told; the file
+it actually writes is that name with `${PID}\=' replaced by the process
+id, and, when the name is a directory that exists, a file named for the
+process inside it.  Both substitutions are the server\='s, so neither
+can be resolved before there is a server."
+  (let* ((connection (lsp-ltex-plus--live-connection))
+         (process (and connection (jsonrpc--process connection)))
+         (pid (and (processp process) (process-id process))))
+    (when (and lsp-ltex-plus-server-log-file pid)
+      (let ((path (expand-file-name
+                   (replace-regexp-in-string (regexp-quote "${PID}")
+                                             (number-to-string pid)
+                                             lsp-ltex-plus-server-log-file
+                                             t t))))
+        (if (file-directory-p path)
+            (expand-file-name (format "ltex-ls-%d.log" pid) path)
+          path)))))
+
 (defun lsp-ltex-plus-doctor--logging-line ()
   "Return where each of the four records is going, if anywhere."
   (list (cons "Client log"
@@ -452,12 +472,20 @@ files the entries come from, named and followed."
                 "lsp-ltex-plus-events-buffer-size"
                 "lsp-ltex-plus-events-buffer-format")))
         (cons "Server log file"
-              (concat (if lsp-ltex-plus-server-log-file
-                          ;; Verbatim, not a link: the name may hold the
-                          ;; server's `${PID}', which is no file yet.
-                          (lsp-ltex-plus-doctor--path
-                           lsp-ltex-plus-server-log-file)
-                        "none")
+              (concat (let ((written (lsp-ltex-plus-doctor--server-log-file)))
+                        (cond
+                         ;; The file the running server is writing: a
+                         ;; link, since there is something to open.
+                         (written (lsp-ltex-plus-doctor--file-link written))
+                         ;; Named but no server yet, so `${PID}' cannot
+                         ;; be resolved; verbatim, or org would link to
+                         ;; a file whose name is not the server's.
+                         (lsp-ltex-plus-server-log-file
+                          (concat (lsp-ltex-plus-doctor--path
+                                   lsp-ltex-plus-server-log-file)
+                                  " -- the name given to the server; it \
+fills in the process id when it starts"))
+                         (t "none")))
                       (lsp-ltex-plus-doctor--options
                        "lsp-ltex-plus-server-log-file")))
         (cons "Server log level"
