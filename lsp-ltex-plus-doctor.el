@@ -172,8 +172,7 @@ warning is the user\='s decision rather than a fault."
                               (expand-file-name lsp-ltex-plus-java-path)))
                           "not set by Emacs")))
           (cons "Java"
-                (format "%s -- resolved by Emacs, not guaranteed: the \
-launcher script can export a JAVA_HOME of its own"
+                (format "%s [fn:java]"
                         (if (lsp-ltex-plus-doctor--java)
                             (lsp-ltex-plus-doctor--path
                              (lsp-ltex-plus-doctor--java))
@@ -337,13 +336,21 @@ window is redisplayed.  An overlay is left alone."
             (overlay-put overlay 'lsp-ltex-plus-doctor t)))
         (setq pos next)))))
 
-(defun lsp-ltex-plus-doctor--insert-section (title rows)
-  "Insert an org heading TITLE followed by ROWS as a description list."
+(defun lsp-ltex-plus-doctor--insert-section (title rows &optional notes)
+  "Insert an org heading TITLE followed by ROWS as a description list.
+NOTES are (LABEL . TEXT) org footnote definitions, written after the
+rows: a caveat that has to be said once belongs under the section, not
+in the middle of a line the reader is scanning."
   (insert "* " title "\n")
   (pcase-dolist (`(,label . ,value) rows)
     (insert (format "  - %-22s :: " label))
     (lsp-ltex-plus-doctor--insert-faced value)
     (insert "\n"))
+  (when notes
+    (insert "\n")
+    ;; Column zero, which is where org looks for a definition.
+    (pcase-dolist (`(,label . ,text) notes)
+      (insert (format "[fn:%s] %s\n" label text))))
   (insert "\n"))
 
 (defun lsp-ltex-plus-doctor--insert-report ()
@@ -355,8 +362,12 @@ so none of it is offered to the server as prose."
           "#+startup: entitiesplain\n\n"
           "  =g=  write this report again    =r=  restart the server\n"
           "  =q=  bury this buffer           =C-c \"=  fix the mistake at point\n\n")
-  (lsp-ltex-plus-doctor--insert-section "Server"
-                                        (lsp-ltex-plus-doctor--server-line))
+  (lsp-ltex-plus-doctor--insert-section
+   "Server" (lsp-ltex-plus-doctor--server-line)
+   '(("java" . "The java Emacs resolves, from JAVA_HOME when that is set
+and otherwise from ~exec-path~.  Not a guarantee: the executable above
+may be a launcher script rather than the language server itself, and
+such a script can export a JAVA_HOME of its own.")))
   (lsp-ltex-plus-doctor--insert-section "Connection"
                                         (lsp-ltex-plus-doctor--connection-line))
   (lsp-ltex-plus-doctor--insert-section "This buffer"
