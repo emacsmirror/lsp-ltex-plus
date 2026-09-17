@@ -251,8 +251,12 @@ attach that fails half-way is still undone by
 With INTERACTIVE non-nil the language id is asked for, defaulting to
 plain text; otherwise plain text is used silently.  A mode added this
 way is markup, not a programming language: an unknown mode is far
-likelier to be a writing context than a language."
-  (unless (assq major-mode lsp-ltex-plus-major-modes)
+likelier to be a writing context than a language.
+
+A mode derived from a listed one is not absent: `lsp-ltex-plus--mode-entry'
+already answers for it, and registering it would freeze a wrong
+\"plaintext\" over the id it inherits."
+  (unless (lsp-ltex-plus--mode-entry major-mode)
     (let ((language-id (if interactive
                            (read-string
                             (format "Language ID for %s (RET for \"plaintext\"): "
@@ -268,7 +272,7 @@ programming-language guard and makes an unknown mode's language id a
 question rather than a default.  Each way this can decline leaves the
 mode variable nil, so the mode line and the dispatcher agree with what
 happened."
-  (let* ((entry (assq major-mode lsp-ltex-plus-major-modes))
+  (let* ((entry (lsp-ltex-plus--mode-entry major-mode))
          (programming-p (and entry (nth 2 entry))))
     (if (and programming-p
              (not lsp-ltex-plus-check-programming-languages)

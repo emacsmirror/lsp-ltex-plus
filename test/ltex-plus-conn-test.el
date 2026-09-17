@@ -414,6 +414,40 @@ which fails in a batch Emacs."
     (fundamental-mode)
     (should (equal (lsp-ltex-plus--language-id) "plaintext"))))
 
+(define-derived-mode ltex-plus-conn-test-notes-mode rst-mode "TestNotes"
+  "A mode derived from a listed one, as a user's own notes mode would be.")
+
+(ert-deftest ltex-plus-conn-test-a-derived-mode-inherits-the-nearest-id ()
+  "A derived mode is sent under the id of its nearest listed ancestor.
+`rst-mode' derives from `text-mode' and both are listed, so this also
+pins that the chain is walked from the mode outwards: the answer is
+\"restructuredtext\", not the \"plaintext\" of the farther ancestor."
+  (with-temp-buffer
+    (ltex-plus-conn-test-notes-mode)
+    (should (equal (lsp-ltex-plus--language-id) "restructuredtext"))))
+
+(ert-deftest ltex-plus-conn-test-a-derived-mode-is-not-registered ()
+  "A mode that inherits an id is known, so nothing is pushed or asked.
+Registering it would freeze \"plaintext\" into the table and shadow the
+id it inherits for the rest of the session."
+  (let ((lsp-ltex-plus-major-modes (copy-sequence lsp-ltex-plus-major-modes)))
+    (with-temp-buffer
+      (ltex-plus-conn-test-notes-mode)
+      (cl-letf (((symbol-function 'read-string)
+                 (lambda (&rest _) (error "The user was asked for a language id"))))
+        (lsp-ltex-plus--register-major-mode t))
+      (should-not (assq major-mode lsp-ltex-plus-major-modes))
+      (should (equal (lsp-ltex-plus--language-id) "restructuredtext")))))
+
+(ert-deftest ltex-plus-conn-test-an-unrelated-mode-is-still-registered ()
+  "A mode with no listed ancestor keeps the old behaviour: plain text."
+  (let ((lsp-ltex-plus-major-modes (copy-sequence lsp-ltex-plus-major-modes)))
+    (with-temp-buffer
+      (fundamental-mode)
+      (lsp-ltex-plus--register-major-mode nil)
+      (should (equal (assq major-mode lsp-ltex-plus-major-modes)
+                     (list major-mode "plaintext" nil))))))
+
 ;;;; -- Edits ------------------------------------------------------------------
 
 (defmacro ltex-plus-conn-test--with-open-document (var contents &rest body)

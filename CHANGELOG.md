@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- **A major mode derived from a listed one is now checked as what it derives from.** A mode built on `org-mode` or `markdown-mode` -- a personal notes mode, say -- was sent to the server as plain text, so the server spell-checked the markup instead of parsing it. Worse, the first check wrote that mode into `lsp-ltex-plus-major-modes` as `"plaintext"`, which froze the wrong answer for the rest of the session, and turning the mode on by name asked for a language id that the parent already answers. The table is now read through `lsp-ltex-plus--mode-entry`, which walks the mode's own parent chain and takes the nearest listed ancestor -- nearest, because `org-mode` derives from `text-mode` and both are listed. This decides only what a document is written in: whether a buffer is checked at all is still an exact match against the enabled set, so no derived mode is activated that the user did not ask for.
 - **The client's own log is now in `*lsp-ltex-plus log*`,** not `*lsp-ltex-plus::client*`. The double colon was `lsp-mode`'s convention for a server's buffers, kept across the 1.0.0 migration although nothing in the client produces such a name any more. The prefix now says which side of the wire wrote the buffer: `lsp-ltex-plus` for the client's own steps, `ltex-ls-plus` for the connection's `*ltex-ls-plus events*` and the server's `*ltex-ls-plus stderr*`, both unchanged. The buffer exists only under `lsp-ltex-plus-debug`; anyone naming the old one in a `display-buffer-alist` rule has to update it.
 
 

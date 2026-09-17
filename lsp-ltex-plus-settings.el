@@ -1119,12 +1119,31 @@ comparison."
 ;; client layer that answers the server has nothing of its own to say about
 ;; which words a document is checked against.
 
+(defun lsp-ltex-plus--mode-entry (mode)
+  "Return the `lsp-ltex-plus-major-modes' entry that applies to MODE.
+MODE itself when it is listed, otherwise its *nearest* listed ancestor,
+otherwise nil.  The chain is walked from MODE outwards, one
+`derived-mode-parent' at a time, rather than the table being scanned for
+something MODE derives from: `org-mode' derives from `text-mode', and both
+are listed, so a scan would answer with whichever the table happens to
+name first -- the alphabet deciding what a document is written in.
+
+This says what a buffer is, never whether it is checked.  Activation is
+the dispatcher's exact `memq' against `lsp-ltex-plus--enabled-modes', so a
+derived mode is still only ever checked when the user lists it, calls
+`lsp-ltex-plus-mode' by name, or is in a buffer this package made itself."
+  (or (assq mode lsp-ltex-plus-major-modes)
+      (let ((parent (get mode 'derived-mode-parent)))
+        (and parent (lsp-ltex-plus--mode-entry parent)))))
+
 (defun lsp-ltex-plus--language-id (&optional buffer)
   "Return the LSP language id for BUFFER (default the current buffer).
-Read from `lsp-ltex-plus-major-modes'; a mode not listed there is sent
-as plain text, which the server checks as prose."
-  (or (cadr (assq (buffer-local-value 'major-mode (or buffer (current-buffer)))
-                  lsp-ltex-plus-major-modes))
+Read from `lsp-ltex-plus-major-modes' through `lsp-ltex-plus--mode-entry',
+so a mode derived from a listed one is sent under its parent's id; a mode
+with no listed ancestor is sent as plain text, which the server checks as
+prose."
+  (or (cadr (lsp-ltex-plus--mode-entry
+             (buffer-local-value 'major-mode (or buffer (current-buffer)))))
       "plaintext"))
 
 (defun lsp-ltex-plus--workspace-specific-entry ()
