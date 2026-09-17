@@ -873,15 +873,23 @@ version is always taken."
 ;; written for, and by default a server below it is stopped, with a
 ;; message that names the way out.
 
-(defun lsp-ltex-plus--version-at-least-p (version minimum)
-  "Return non-nil when VERSION is MINIMUM or newer.
-Only the leading numeric part of VERSION is compared: a release carries
-build metadata (\"18.7.1-alpha.32+2026-08-26.g7977ac67\") that
-`version-to-list\=' cannot read.  A VERSION that is not a version string
-at all -- nil included -- is never new enough."
+(defun lsp-ltex-plus--version-number (version)
+  "Return the leading numeric part of VERSION, or nil.
+A release carries build metadata, as in
+\"18.7.1-alpha.32+2026-08-26.g7977ac67\", that `version-to-list\='
+cannot read, so \"18.7.1\" is the part every comparison is made on --
+and the part the doctor shows, since a user reading the long string
+beside a bare floor cannot tell which of the two is being compared."
   (and (stringp version)
        (string-match "\\`\\([0-9]+\\(?:\\.[0-9]+\\)*\\)" version)
-       (not (version< (match-string 1 version) minimum))))
+       (match-string 1 version)))
+
+(defun lsp-ltex-plus--version-at-least-p (version minimum)
+  "Return non-nil when VERSION is MINIMUM or newer.
+Compared on `lsp-ltex-plus--version-number\='.  A VERSION that is not a
+version string at all -- nil included -- is never new enough."
+  (let ((number (lsp-ltex-plus--version-number version)))
+    (and number (not (version< number minimum)))))
 
 (defun lsp-ltex-plus--enforce-server-version (conn)
   "Stop CONN when the server it connected to is too old.

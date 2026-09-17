@@ -628,22 +628,29 @@ All variables mentioned below are standard Emacs customization options. If you u
 
 ### Start here: `M-x lsp-ltex-plus-doctor`
 
-One buffer that answers *is this working, and with what?* It reports the server it found and what that server says about itself, the minimum version and whether it is enforced, the state of the connection, the settings a check is made with, where each log is going, and the Emacs, `jsonrpc` and package versions — so the whole buffer is a bug report you can copy with `C-x h M-w`.
+One buffer that answers *is LTeX+ working, and with what?* The report names the server binary Emacs found, the version that server reports and the version number compared against the minimum, whether the connection is up, the settings every check is made with, which logs are switched on, and the Emacs, `jsonrpc` and `lsp-ltex-plus` versions. Copy the whole buffer with `C-x h M-w` and a bug report is written.
 
-Below the report it checks itself. Each sample is wrong on purpose and is checked in its own language, using LTeX+'s [magic comments](https://ltex-plus.github.io/ltex-plus/advanced-usage.html#magic-comments) to switch language mid-document, so you can watch the underlines appear:
+Below the report the doctor checks itself. Every sample contains deliberate mistakes, and a [magic comment](https://ltex-plus.github.io/ltex-plus/advanced-usage.html#magic-comments) above each sample sets the language for the sample that follows, so one buffer is checked in three languages at once:
 
 ```org
-* English (en-US, your language)     3 findings
-  She go to the libary every day and dont come back.
-* French                             3 findings
-  Je voudrais aller a la bibliotheque tout les jours.
-* German                             2 findings
-  Ich gehe jeden Tag in die Bibliotek und komme nicht zuruck.
+* English (en-US, your language)     … findings
+  Are you tired of silly spellling mistakes in you're notes? This
+  sentance is wrong on purpose, so LTeX+ has something to catch.
+* French                             … findings
+  Fatigué des fautes d'ortographe dans vos notes ? Cette phrase est
+  fausse exprès, pour que LTeX+ ai quelque chose à corriger.
+* German                             … findings
+  Müde von dummen Rechtschreibfelern in Ihren Notizen? Dieser Satz ist
+  absichtlick falsch, damit LTeX+ etwas zu finden hat.
 ```
 
-A section that is still empty says so, and says why: **a section never goes quiet to mean "nothing wrong"**, because everything there is wrong on purpose. Sections show `waiting for the server` while the check is out, and after thirty seconds `no answer` with a pointer to `lsp-ltex-plus-java-max-heap` — the usual reason a language never arrives is that the server could not load its model in the heap it was given. The whole document is checked in one go, so one language that has to load a model — about ten seconds, the first time — holds up the answer for all of them.
+Each heading carries the number of mistakes that came back. How many that is depends on the LanguageTool behind the server — a Premium account or your own LanguageTool server finds mistakes the bundled one does not — so the numbers here are deliberately left blank.
 
-In the buffer: `g` writes the report again, `r` restarts the server, `q` buries it, and `C-c "` is the ordinary suggestions menu. The samples are `lsp-ltex-plus-doctor-samples`; add your own language to see it checked.
+The same magic comments add `LTeX` to each language's dictionary, so the package name is not underlined as a misspelling — a working example of both magic-comment features, sitting in the buffer to be copied into your own documents.
+
+**A heading never goes quiet to mean "nothing wrong"**, because every sample is wrong on purpose: a heading with no count says `waiting for LTeX+ to answer` while the check is out, and after thirty seconds `no answer after 30 seconds: the server may have run out of memory while loading this language`, which names `lsp-ltex-plus-java-max-heap` as the setting to raise. LTeX+ checks the whole buffer in one go, so a language used for the first time keeps every heading waiting while the server loads a language model — a few seconds.
+
+Keys in the doctor buffer: `g` writes the report again, `r` restarts the server, `q` buries the buffer, `C-c "` opens the suggestions menu for the mistake at point. To check a fourth language, add an entry to `lsp-ltex-plus-doctor-samples`.
 
 ### Server Not Found
 

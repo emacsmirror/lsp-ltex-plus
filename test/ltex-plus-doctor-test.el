@@ -114,8 +114,8 @@ finding in the buffer."
   (ltex-plus-doctor-test--with-report
     (ltex-plus-doctor-test--pretend-checked)
     (setq lsp-ltex-plus--diagnostics
-          (list (ltex-plus-doctor-test--diagnostic-on "libary")
-                (ltex-plus-doctor-test--diagnostic-on "Bibliotek")))
+          (list (ltex-plus-doctor-test--diagnostic-on "spellling")
+                (ltex-plus-doctor-test--diagnostic-on "Rechtschreibfelern")))
     (lsp-ltex-plus-doctor--on-diagnostics (current-buffer))
     (should (equal (ltex-plus-doctor-test--status "English (en-US, your language)")
                    "  1 finding"))
@@ -142,7 +142,7 @@ The mode declines when no server can be found; a buffer that then said
 it was waiting would be waiting for something nobody sent."
   (ltex-plus-doctor-test--with-report
     (should-not lsp-ltex-plus-mode)
-    (should (string-match-p "nothing was sent"
+    (should (string-match-p "LTeX\\+ sent nothing"
                             (substring-no-properties
                              (overlay-get lsp-ltex-plus-doctor--overall
                                           'after-string))))
@@ -156,7 +156,7 @@ per-section time would be the same number repeated."
   (ltex-plus-doctor-test--with-report
     (ltex-plus-doctor-test--pretend-checked)
     (setq lsp-ltex-plus--diagnostics
-          (list (ltex-plus-doctor-test--diagnostic-on "libary")))
+          (list (ltex-plus-doctor-test--diagnostic-on "spellling")))
     (lsp-ltex-plus-doctor--on-diagnostics (current-buffer))
     (should (string-match-p
              "checked in [0-9.]+ s"

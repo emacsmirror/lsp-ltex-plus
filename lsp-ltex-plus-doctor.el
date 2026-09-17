@@ -31,19 +31,33 @@
   "Name of the buffer `lsp-ltex-plus-doctor' reports in.")
 
 (defcustom lsp-ltex-plus-doctor-samples
-  '(("en-US" "English" "She go to the libary every day and dont come back.")
-    ("fr-FR" "French" "Je voudrais aller a la bibliotheque tout les jours.")
-    ("de-DE" "German" "Ich gehe jeden Tag in die Bibliotek und komme nicht zuruck."))
+  '(("en-US" "English"
+     "Are you tired of silly spellling mistakes in you're notes? This \
+sentance is wrong on purpose, so LTeX+ has something to catch.")
+    ("fr-FR" "French"
+     "Fatigué des fautes d'ortographe dans vos notes ? Cette phrase est \
+fausse exprès, pour que LTeX+ ai quelque chose à corriger.")
+    ("de-DE" "German"
+     "Müde von dummen Rechtschreibfelern in Ihren Notizen? Dieser Satz ist \
+absichtlick falsch, damit LTeX+ etwas zu finden hat."))
   "Sample texts the doctor has the server check, one per language.
 Each entry is (LANGUAGE LABEL TEXT).  LANGUAGE is an `ltex.language\='
 code, which the doctor puts in a magic comment so that one document can
 be checked in several languages.
 
-Every TEXT must contain at least one mistake the server is certain to
-flag, because a section that shows nothing has to mean \"no answer
-yet\" -- a sample that is merely correct would be indistinguishable
-from a language that failed to load.  Misspellings are used rather than
-style rules, which come and go between LanguageTool releases.
+Write at least one certain mistake into every TEXT.  An empty section
+means \"no answer yet\", so a sample with nothing wrong in it looks
+exactly like a language the server failed to load.  Prefer plain
+misspellings to errors of style: LanguageTool keeps its spelling rules
+between releases and revises its style rules.
+
+The shipped samples advertise the package and misspell it while doing
+so, which is the shortest way to show a reader what the underlines are
+for.
+
+One space after a full stop, not two: French and German flag a repeated
+space, and a finding nobody put there on purpose makes the count beside
+the heading disagree with the mistakes a reader can see.
 
 The first section is the language you are configured for, when a sample
 matches it; the others follow in this order.  Each new language costs
@@ -108,14 +122,25 @@ set `lsp-ltex-plus-ls-plus-executable'"
                       (version (format "%s %s"
                                        (or (plist-get info :name) "ltex-ls")
                                        version))
-                      (t "nothing -- a server older than 18.7.0, which is \
-the first release that says")))
+                      (t "nothing: only ltex-ls-plus 18.7.0 and newer report \
+a version, so this server is older")))
+          (cons "Version compared"
+                (let ((number (lsp-ltex-plus--version-number version)))
+                  (cond ((not connection) "--")
+                        ((not number) "none to compare")
+                        (t (format "%s -- the leading numbers of the version \
+above, which is what the minimum below is compared against" number)))))
           (cons "Minimum version"
-                (format "%s (%s)"
+                (format "%s -- %s%s"
                         lsp-ltex-plus-minimum-server-version
                         (if lsp-ltex-plus-require-minimum-server-version
-                            "enforced: an older server is stopped"
-                          "not enforced: an older server is used anyway")))
+                            "an older server is stopped"
+                          "an older server is used anyway, with a warning")
+                        (cond ((not connection) "")
+                              ((lsp-ltex-plus--version-at-least-p
+                                version lsp-ltex-plus-minimum-server-version)
+                               "; this server is new enough")
+                              (t "; this server is too old"))))
           (cons "Java"
                 (if lsp-ltex-plus-java-path
                     (format "JAVA_HOME=%s" lsp-ltex-plus-java-path)
@@ -130,8 +155,8 @@ the first release that says")))
   "Return what is known about the connection to the server."
   (let ((connection (lsp-ltex-plus--live-connection)))
     (list (cons "State"
-                (cond ((not connection) "not running -- it starts with the \
-first buffer that needs it")
+                (cond ((not connection) "not running: LTeX+ starts the \
+server with the first buffer that needs checking")
                       ((lsp-ltex-plus--connection-ready connection) "live, \
 handshake complete")
                       (t "starting -- the handshake has not finished")))
@@ -147,11 +172,13 @@ handshake complete")
   (list (cons "Language id" (lsp-ltex-plus--language-id))
         (cons "Front-end"
               (cond ((null lsp-ltex-plus--attached-provider)
-                     (format "none yet -- this buffer is not being checked (you asked for %s)" lsp-ltex-plus-diagnostics-provider))
+                     (format "none: this buffer is not being checked.  \
+Your setting asks for %s" lsp-ltex-plus-diagnostics-provider))
                     ((eq lsp-ltex-plus--attached-provider
                          lsp-ltex-plus-diagnostics-provider)
                      (format "%s" lsp-ltex-plus--attached-provider))
-                    (t (format "%s -- you asked for %s, which this Emacs does not have" lsp-ltex-plus--attached-provider
+                    (t (format "%s.  Your setting asks for %s, which this \
+Emacs does not have" lsp-ltex-plus--attached-provider
                        lsp-ltex-plus-diagnostics-provider))))
         (cons "Checked" (if lsp-ltex-plus-mode "yes" "no"))))
 
@@ -222,8 +249,8 @@ Everything here is inside the region the first magic comment disables,
 so none of it is offered to the server as prose."
   (insert "#+title: LTeX+ doctor\n"
           "#+options: toc:nil\n\n"
-          "  g  refresh   r  restart the server   q  bury"
-          "   C-c \"  suggestions at point\n\n")
+          "  g  write this report again    r  restart the server\n"
+          "  q  bury this buffer           C-c \"  fix the mistake at point\n\n")
   (lsp-ltex-plus-doctor--insert-section "Server"
                                         (lsp-ltex-plus-doctor--server-line))
   (lsp-ltex-plus-doctor--insert-section "Connection"
@@ -236,13 +263,14 @@ so none of it is offered to the server as prose."
                                         (lsp-ltex-plus-doctor--logging-line))
   (lsp-ltex-plus-doctor--insert-section "Environment"
                                         (lsp-ltex-plus-doctor--environment-line))
-  (insert "* Where these values come from\n"
-          "  The settings above are your global ones.  Any buffer can be\n"
-          "  checked with different values: put them in a `.dir-locals.el'\n"
-          "  and they hold for that directory, because the server is\n"
-          "  answered from the buffer holding the document it is asking\n"
-          "  about.  So what a project's buffers are checked with may not\n"
-          "  be what this page shows.\n\n"))
+  (insert "* Settings for one project only\n"
+          "  This report shows the global settings.  To check one project\n"
+          "  with different settings -- another language, a longer\n"
+          "  dictionary -- write those settings into a `.dir-locals.el'\n"
+          "  file in the top directory of the project.  LTeX+ answers the\n"
+          "  server from the buffer being checked, so every buffer under\n"
+          "  that directory is checked with the settings of the project.\n"
+          "  This report never shows the settings of a project.\n\n"))
 
 (defun lsp-ltex-plus-doctor--make-overlay ()
   "Return a new overlay, on the heading just inserted, carrying a status."
@@ -290,7 +318,11 @@ says so."
 FIRST says this is the first one, which has to switch checking back on
 after the magic comment that disabled it for the report."
   (pcase-let ((`(,language ,label ,text) sample))
-    (insert (format "# LTeX: %slanguage=%s\n"
+    ;; `dictionary+=' per section, not once at the top: the dictionary
+    ;; is kept per language, so the package's own name has to be
+    ;; accepted again in each of them or the doctor flags it three
+    ;; times over.
+    (insert (format "# LTeX: %slanguage=%s dictionary+=LTeX\n"
                     (if first "enabled=true " "") language))
     (insert "* " label "\n")
     (let ((overlay (lsp-ltex-plus-doctor--make-overlay))
@@ -310,7 +342,7 @@ after the magic comment that disabled it for the report."
                              lsp-ltex-plus-doctor--answered)
                      'face 'success))
         ((not lsp-ltex-plus-mode)
-         (propertize "  nothing was sent" 'face 'error))
+         (propertize "  LTeX+ sent nothing" 'face 'error))
         (t (propertize "  waiting for the first answer" 'face 'shadow))))
 
 (defun lsp-ltex-plus-doctor--status (section)
@@ -319,15 +351,15 @@ after the magic comment that disabled it for the report."
     (cond
      (found (propertize (format "  %s" found) 'face 'success))
      ((not lsp-ltex-plus-mode)
-      (propertize "  not checked -- nothing was sent; see the report above"
-                  'face 'error))
+      (propertize "  not checked: LTeX+ sent nothing.  See the Server section \
+above." 'face 'error))
      ((plist-get section :timed-out)
-      (propertize (format "  no answer after %d s -- the server may not have \
-been able to load this language; see `lsp-ltex-plus-java-max-heap\='"
-                          lsp-ltex-plus-doctor-timeout)
+      (propertize (format "  no answer after %d seconds: the server may have \
+run out of memory while loading this language.  Raise \
+`lsp-ltex-plus-java-max-heap\='." lsp-ltex-plus-doctor-timeout)
                   'face 'warning))
-     (t (propertize "  waiting for the server -- a language model loads on \
-first use, which takes a few seconds" 'face 'shadow)))))
+     (t (propertize "  waiting for LTeX+ to answer.  Loading a language \
+model takes a few seconds." 'face 'shadow)))))
 
 (defun lsp-ltex-plus-doctor--show-status ()
   "Put each section\='s status on its heading.
@@ -402,11 +434,12 @@ section per sample, each switching the language for what follows it."
     (setq lsp-ltex-plus-doctor--overall
           (lsp-ltex-plus-doctor--make-overlay))
     (insert "\n"
-            "  Each sample below is wrong on purpose, and is checked in its\n"
-            "  own language; the heading of each says what came back.  The\n"
-            "  whole document is checked in one go, so one language that has\n"
-            "  to load a model -- about ten seconds, the first time you use\n"
-            "  it -- holds up the answer for all of them.\n\n")
+            "  Every sample below contains deliberate mistakes, and each\n"
+            "  sample is checked in the language named in the comment above\n"
+            "  the sample.  Each heading says how many mistakes LTeX+ found.\n"
+            "  LTeX+ checks the whole document in one go, so a language used\n"
+            "  for the first time keeps every heading waiting while the\n"
+            "  server loads a language model, which takes a few seconds.\n\n")
     (setq lsp-ltex-plus-doctor--answered nil)
     (setq lsp-ltex-plus-doctor--started (float-time))
     (let ((first t))
