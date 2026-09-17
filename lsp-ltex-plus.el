@@ -102,11 +102,6 @@ so it must stay idempotent: nothing here accumulates."
                    . ,(locate-user-emacs-file "lsp-ltex-plus/hidden-false-positives.eld"))))
     (lsp-ltex-plus--migrate-extensionless-file (car pair) (cdr pair)))
   (lsp-ltex-plus--load-external-settings)
-  ;; Under debug, ask the server for its own trace of the exchange too.
-  ;; "messages" rather than "verbose": the jsonrpc events buffer already
-  ;; holds every payload, so the verbose trace would double it.
-  (when (and lsp-ltex-plus-debug (string= lsp-ltex-plus-trace-server "off"))
-    (setq lsp-ltex-plus-trace-server "messages"))
   (lsp-ltex-plus--log "Settings loaded."))
 
 ;;;###autoload

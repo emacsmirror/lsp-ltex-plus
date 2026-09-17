@@ -173,6 +173,39 @@ Emacs has, a connection can be made with what the probe chose."
                       '(:events-buffer-config :events-buffer-scrollback-size)))
       (delete-process (jsonrpc--process conn)))))
 
+(ert-deftest ltex-plus-conn-test-the-events-buffer-records-nothing-by-default ()
+  "The default settings ask jsonrpc for a size of zero, in the short format.
+A grammar checker sends the whole document on every pause in typing, so
+the wire record is off unless the user asks for it."
+  (should (equal lsp-ltex-plus-events-buffer-size 0))
+  (should (equal lsp-ltex-plus-events-buffer-format 'short))
+  (let ((initargs (lsp-ltex-plus--events-buffer-initargs
+                   lsp-ltex-plus-events-buffer-size
+                   lsp-ltex-plus-events-buffer-format)))
+    (pcase (car initargs)
+      (:events-buffer-config
+       (should (equal (cadr initargs) '(:size 0 :format short))))
+      (:events-buffer-scrollback-size
+       ;; Emacs 29 takes a size and no format.
+       (should (equal (cadr initargs) 0))))))
+
+(ert-deftest ltex-plus-conn-test-the-format-reaches-jsonrpc ()
+  "A format of `full\=' is passed on where this jsonrpc understands one."
+  (let ((initargs (lsp-ltex-plus--events-buffer-initargs 200000 'full)))
+    (when (eq (car initargs) :events-buffer-config)
+      (should (equal (cadr initargs) '(:size 200000 :format full))))))
+
+(ert-deftest ltex-plus-conn-test-the-server-log-file-is-asked-for ()
+  "`lsp-ltex-plus-server-log-file\=' becomes the server's own --log-file.
+Nil adds nothing, and the name is passed as written so that the server
+can expand its own `${PID}\='."
+  (let ((lsp-ltex-plus-ls-plus-executable (or (executable-find "true") "/bin/true")))
+    (let ((lsp-ltex-plus-server-log-file nil))
+      (should (equal (length (lsp-ltex-plus--server-command)) 1)))
+    (let ((lsp-ltex-plus-server-log-file "/tmp/ltex-${PID}.log"))
+      (should (equal (cadr (lsp-ltex-plus--server-command))
+                     "--log-file=/tmp/ltex-${PID}.log")))))
+
 (ert-deftest ltex-plus-conn-test-no-connection-is-not-live ()
   "With nothing started there is no live connection to reuse."
   (let ((lsp-ltex-plus--connection nil))

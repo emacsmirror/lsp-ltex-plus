@@ -111,13 +111,75 @@ Nothing is refused when the version cannot be determined at all."
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-debug nil
-  "When non-nil, log what the client does and keep the whole wire.
-The client's own log goes to the `*lsp-ltex-plus log*\\=' buffer.
-The exchange with the server is always recorded in the jsonrpc events
-buffer, `*ltex-ls-plus events*\\='; under this option that buffer is
-unbounded rather than capped, and the server is asked for its own
-message trace too (`lsp-ltex-plus-trace-server\\=')."
+  "When non-nil, log what the client does to `*lsp-ltex-plus log*\\='.
+Which buffer it decided to check and why not, the documents it opened,
+the diagnostics it kept or dropped, where an added word was saved.
+
+This is the only thing the option does.  The three other records each
+have their own setting, so that turning this one on cannot start a file
+or a flood nobody asked for: `lsp-ltex-plus-events-buffer-size\\=' for the
+messages exchanged with the server, `lsp-ltex-plus-server-log-file\\=' for
+the whole exchange written to a file by the server itself, and
+`lsp-ltex-plus-ltex-ls-log-level\\=' for how much the server narrates into
+`*ltex-ls-plus stderr*\\='."
   :type 'boolean
+  :group 'lsp-ltex-plus)
+
+(defcustom lsp-ltex-plus-events-buffer-size 0
+  "Bytes of the exchange with the server to keep in the events buffer.
+Handed to jsonrpc, which keeps that record in `*ltex-ls-plus events*\\=' and
+eats the oldest lines to stay within the number given here.
+
+Zero, the default, records nothing: the buffer is created and stays
+empty.  A grammar checker sends the whole document on every pause in
+typing, so there is nothing here a writer needs, and on a 50 KB document
+the record would grow by 50 KB every few seconds.  A positive number is
+useful to watch the conversation and its latency; 200000 holds a good
+while of it.  nil is jsonrpc\='s own default, which is no limit at all --
+the buffer then grows for as long as Emacs runs.
+
+Read when the server starts; `lsp-ltex-plus-restart-server\\=' applies a
+change.  See also `lsp-ltex-plus-events-buffer-format\\='."
+  :type '(choice (const :tag "Record nothing" 0)
+                 (integer :tag "Bytes to keep")
+                 (const :tag "No limit (jsonrpc\='s default)" nil))
+  :group 'lsp-ltex-plus)
+
+(defcustom lsp-ltex-plus-events-buffer-format 'short
+  "How much of each message to write in the events buffer.
+`short\=' is one line per message: the time, the direction, the method
+and the id.  `full\=' adds the message\='s JSON to that line, which for a
+`textDocument/didChange\=' is the whole document.
+
+Only meaningful when `lsp-ltex-plus-events-buffer-size\\=' records
+something.  Emacs 29\='s jsonrpc has no such choice -- it takes a size and
+nothing else -- so this is ignored there, and what it writes is its own
+pretty-printed rendering of every message.
+
+Read when the server starts; `lsp-ltex-plus-restart-server\\=' applies a
+change."
+  :type '(choice (const :tag "One line per message" short)
+                 (const :tag "One line per message, with its JSON" full))
+  :group 'lsp-ltex-plus)
+
+(defcustom lsp-ltex-plus-server-log-file nil
+  "Where the server should tee the whole exchange, or nil for nowhere.
+Passed to `ltex-ls-plus\=' as its own `--log-file\=' option, so the file is
+written by the server, not by Emacs: both directions of the conversation
+and the server\='s log, in one file, in order.  \=`${PID}\=' in the name is
+replaced by the server\='s process id, and an existing directory is given
+a file named for the process inside it.  The parent directory must
+exist.
+
+This is a maintainer\='s instrument.  Reach for it when the suspicion is a
+bug in the conversation with the server -- a request the server refuses,
+a check that never comes back -- and send the file with the report.  It
+grows for as long as the server runs, and it is written from the moment
+the server starts, whatever `lsp-ltex-plus-debug\\=' says.
+
+Read when the server starts; `lsp-ltex-plus-restart-server\\=' applies a
+change."
+  :type '(choice (const :tag "No file" nil) (file :tag "File"))
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-check-programming-languages nil
@@ -562,7 +624,12 @@ is sent at all.  See `lsp-ltex-plus-comint.el'."
   "Debug setting to log the communication between language client and server.
 - \"off\": Don't log any communication.
 - \"messages\": Log the type of requests and responses.
-- \"verbose\": Log the type and contents of requests and responses.")
+- \"verbose\": Log the type and contents of requests and responses.
+
+Sent to the server in the `initialize' request, so what it asks for
+comes back over the wire and lands wherever the exchange is recorded --
+which by default is nowhere, see `lsp-ltex-plus-events-buffer-size'.
+Nothing sets this on your behalf.")
 
 ;;;; -- Internal State & Logging -----------------------------------------------
 

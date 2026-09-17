@@ -65,7 +65,7 @@ There is one knob on this side: `lsp-ltex-plus-change-delay` (default 0.5 s), ho
 
 A remote LanguageTool server is noticeably slower: pointed at the hosted service, the round-trip stretches to roughly **1–4 seconds** depending on network conditions and how busy the service is. That is the trade-off for Premium-only rules; the local backend is what most users will want for interactive writing.
 
-To see the exchange itself, with timestamps, look at the `*ltex-ls-plus events*` buffer — see [Watching the wire](#watching-the-wire).
+To see the exchange itself, with timestamps, ask for it first — nothing is recorded by default; see [Logging](#logging).
 
 ## Prerequisites
 
@@ -433,7 +433,10 @@ An empty space means the parameter has no direct counterpart at that layer: typi
 | :--- | :---: | :---: | :--- | :---: | :---: |
 | `lsp-ltex-plus-ls-plus-executable` | R |  | The name or path of the ltex-ls-plus executable. A bare name is looked for under the `bin` of `lsp-ltex-plus-ltex-ls-path`, then on `exec-path`. *Type:* string; *default:* `"ltex-ls-plus"`. | | |
 | `lsp-ltex-plus-require-minimum-server-version` | R |  | When non-nil (the default), stop the server if it reports a version older than 18.7.0, or none at all, and say why. Set to nil to keep using it; the warning still appears. Allowed, but not encouraged — some features will not work. *Type:* boolean; *default:* `t`. | | |
-| `lsp-ltex-plus-debug` | R |  | When non-nil, log the client's steps to `*lsp-ltex-plus log*`, keep the whole exchange in the `*ltex-ls-plus events*` buffer rather than a capped tail, and ask the server for its own message trace. *Type:* boolean; *default:* `nil`. | | |
+| `lsp-ltex-plus-debug` | L |  | When non-nil, log the client's steps — which buffer it checked and why not, the documents it opened, the diagnostics it kept or dropped — to `*lsp-ltex-plus log*`. That is all it does; the three records below have their own settings. *Type:* boolean; *default:* `nil`. | | |
+| `lsp-ltex-plus-events-buffer-size` | R |  | Bytes of the exchange with the server kept in the `*ltex-ls-plus events*` buffer, handed straight to `jsonrpc`. `0` records nothing, a positive number is useful to watch the conversation and its latency, `nil` is jsonrpc's own default of no limit. *Type:* integer or `nil`; *default:* `0`. | | |
+| `lsp-ltex-plus-events-buffer-format` | R |  | How much of each message that buffer gets: `short` is one line per message, `full` adds its JSON. Ignored on Emacs 29, whose `jsonrpc` takes no format. *Type:* `short` or `full`; *default:* `short`. | | |
+| `lsp-ltex-plus-server-log-file` | R |  | A file for the server to tee the whole exchange and its own log into, through its `--log-file` option. `${PID}` is replaced by the server's process id. A maintainer's instrument — see [Logging](#logging). *Type:* file name or `nil`; *default:* `nil`. | | |
 | `lsp-ltex-plus-major-modes` | A† |  | List of `(major-mode language-id programming-p)` triples driving client activation. *Type:* list; *default:* ~80 entries covering markup and programming modes (defined in `lsp-ltex-plus-bootstrap.el`). | | |
 | `lsp-ltex-plus-actions-key` | L |  | Key that opens the menu of suggestions, `lsp-ltex-plus-actions`. Changing it through Customize rebinds at once. *Type:* key description or `nil` for no binding; *default:* `"C-c \""`. | | |
 | `lsp-ltex-plus-change-delay` | L | X | Seconds of quiet after an edit before the buffer is sent to the server. Every edit restarts the wait. *Type:* number; *default:* `0.5`. | | |
@@ -612,9 +615,9 @@ Version 1.0.0 replaced `lsp-mode` with the `jsonrpc` library bundled with Emacs 
   - `lsp-ltex-plus-multi-root` asked `lsp-mode` to reuse one server across projects; that is now simply how the connection works — one `ltex-ls-plus` per Emacs session.
   - `lsp-ltex-plus-show-progress` silenced an `lsp-mode` spinner the client no longer has.
   - `lsp-ltex-plus-show-latency` measured round trips through advice on `lsp-mode` internals; the `*ltex-ls-plus events*` buffer timestamps every message instead.
-  - `lsp-ltex-plus-server-input-log` and `lsp-ltex-plus-server-output-log` named `tee` log files under `/tmp`; the events buffer records the same traffic (see [Watching the wire](#watching-the-wire)).
+  - `lsp-ltex-plus-server-input-log` and `lsp-ltex-plus-server-output-log` named two `tee` log files under `/tmp`, one per direction. `lsp-ltex-plus-server-log-file` replaces both with one file, written by the server itself and holding both directions plus the server's own log (see [Logging](#logging)).
 - **Server commands.** `M-x lsp-workspace-restart` becomes `M-x lsp-ltex-plus-restart-server`, and `M-x lsp-ltex-plus-shutdown-server` stops the server outright. `lsp-ltex-plus-reload-settings` works as before and tells the running server the configuration changed.
-- **Debugging.** With `lsp-ltex-plus-debug` on, the exchange is in `*ltex-ls-plus events*` and the client's own steps in `*lsp-ltex-plus log*`; the server's Java log is in `*ltex-ls-plus stderr*`. `lsp-log-io` and the `*lsp-log*` buffer play no part.
+- **Debugging.** `lsp-ltex-plus-debug` puts the client's own steps in `*lsp-ltex-plus log*`; the server's Java log is in `*ltex-ls-plus stderr*`; the messages exchanged with the server are recorded only if you ask for them, with `lsp-ltex-plus-events-buffer-size`. See [Logging](#logging). `lsp-log-io` and the `*lsp-log*` buffer play no part.
 - **Word lists need no migration.** The four plist files under `~/.emacs.d/lsp-ltex-plus/` are read as before, and your `:custom` lists and project `.dir-locals.el` entries mean what they meant.
 - **Three old command names are gone.** `lsp-ltex-plus-install-hooks` (renamed in 0.2.0) is `lsp-ltex-plus-enable-for-modes`; `lsp-ltex-plus-reload-external-settings` (0.3.1) and `lsp-ltex-plus-reload-and-notify-server` (0.5.0) are both `lsp-ltex-plus-reload-settings`. The aliases that kept them working are removed; a configuration still calling one gets an error naming the missing function.
 - **Word completion is not available in 1.0.0.** It is planned for a future release; see [Word Completion](#word-completion).
@@ -758,11 +761,25 @@ Word completion, which 0.6.0 offered, is not available in 1.0.0. It is planned f
 
 This section is for users who want to understand how `lsp-ltex-plus` works internally — useful context if you hit an unexpected issue or simply want to know what is happening behind the scenes.
 
-### Watching the wire
+### Logging
 
-Every message between Emacs and `ltex-ls-plus` is recorded, with a timestamp, in the `*ltex-ls-plus events*` buffer that `jsonrpc` keeps for the connection. By default it holds the last couple of megabytes, enough for a bug report; under `lsp-ltex-plus-debug` it is unbounded, the client's own steps are logged to `*lsp-ltex-plus log*`, and the server is asked for its own message trace (`lsp-ltex-plus-trace-server`). The server's standard error — its Java log — is in `*ltex-ls-plus stderr*`.
+Nothing is logged by default, and each record has one setting that turns it on. A grammar checker is why: it sends the *whole document* on every pause in your typing, so a record of the exchange grows by the size of your document every few seconds, and none of it is anything a writer needs to see.
 
-A check as it appears there: a `textDocument/didChange` goes out with the whole text; the server sends back a `workspace/configuration` request and an `ltex/workspaceSpecificConfiguration` request, both tagged with the document's URI, and the client answers each from that document's buffer; then `textDocument/publishDiagnostics` arrives, and the front-end draws it.
+| What you want to know | Where it goes | How to turn it on |
+| :--- | :--- | :--- |
+| What the client decided — which buffer it checked, which it skipped and why, where an added word was saved | `*lsp-ltex-plus log*` | `lsp-ltex-plus-debug` to `t`; takes effect at once |
+| Which messages are crossing the wire, and how long the server takes to answer | `*ltex-ls-plus events*` | `lsp-ltex-plus-events-buffer-size` to a positive number of bytes, e.g. `200000`; `lsp-ltex-plus-events-buffer-format` says whether each line carries its JSON too. Restart the server |
+| What the server thinks it is doing | `*ltex-ls-plus stderr*` | `lsp-ltex-plus-ltex-ls-log-level`; restart the server |
+| **Everything**, both directions, in one file | the file you name | `lsp-ltex-plus-server-log-file`; restart the server |
+
+The last one is a **maintainer's instrument**. It is the server's own `--log-file` option: `ltex-ls-plus` tees both sides of the conversation and its own log into the file, in order, with no help from Emacs. Turn it on when the suspicion is a bug in the conversation with the server itself — a request the server refuses, a check that never comes back, a setting that seems not to arrive — and attach the file to the report. It is not useful for anything you would do while writing, and it grows for as long as the server runs, so name a file, reproduce the problem, then set it back to `nil` and restart the server:
+
+```elisp
+(setq lsp-ltex-plus-server-log-file "/tmp/ltex-${PID}.log")  ; ${PID} is the server's, filled in by the server
+(lsp-ltex-plus-restart-server)
+```
+
+A check as it appears in the events buffer: a `textDocument/didChange` goes out with the whole text; the server sends back a `workspace/configuration` request and an `ltex/workspaceSpecificConfiguration` request, both tagged with the document's URI, and the client answers each from that document's buffer; then `textDocument/publishDiagnostics` arrives, and the front-end draws it.
 
 ### How does `lsp-ltex-plus-mode` get set up and activated?
 

@@ -157,14 +157,20 @@ the variable `exec-path'."
 
 (defun lsp-ltex-plus--server-command ()
   "Return the command line that starts `ltex-ls-plus', as a list.
-Signals a `user-error' naming the setting to fix when no executable can
-be found."
-  (let ((executable (lsp-ltex-plus--server-executable)))
+Carries `--log-file' when `lsp-ltex-plus-server-log-file' names one, which
+has the server itself tee the whole exchange there.  Signals a
+`user-error' naming the setting to fix when no executable can be found."
+  (let ((executable (lsp-ltex-plus--server-executable))
+        (log-file (lsp-ltex-plus--str lsp-ltex-plus-server-log-file)))
     (unless executable
       (user-error (concat "[lsp-ltex-plus] Cannot find `%s'; install ltex-ls-plus"
                           " or set `lsp-ltex-plus-ls-plus-executable'")
                   lsp-ltex-plus-ls-plus-executable))
-    (list executable)))
+    (if (string-empty-p log-file)
+        (list executable)
+      ;; Left as the user wrote it: the server expands `${PID}' itself,
+      ;; and `expand-file-name' would take that for a relative name.
+      (list executable (concat "--log-file=" log-file)))))
 
 (defun lsp-ltex-plus--heap-options ()
   "Return the JVM heap flags the two heap settings ask for, as a list.
@@ -206,26 +212,21 @@ connection called NAME, which is how the two end up coupled."
                   :noquery t
                   :stderr (get-buffer-create (format "*%s stderr*" name)))))
 
-(defun lsp-ltex-plus--events-buffer-initargs (size)
-  "Return the initargs that cap a connection's events buffer at SIZE bytes.
-SIZE nil means unbounded and 0 means no events buffer at all.  jsonrpc
-1.0.19, bundled from Emacs 30, configures the buffer through
-`:events-buffer-config'; the jsonrpc bundled with Emacs 29 knows only
-`:events-buffer-scrollback-size', and refuses the newer initarg as an
-invalid slot.  The class is probed for the newer slot rather than the
-library for a version, since the library does not say which it is."
+(defun lsp-ltex-plus--events-buffer-initargs (size &optional format)
+  "Return the initargs that keep SIZE bytes of the exchange, in FORMAT.
+SIZE nil means unbounded and 0 means nothing is recorded.  FORMAT is
+`short' or `full' and defaults to `short'.  jsonrpc 1.0.19, bundled from
+Emacs 30, configures the buffer through `:events-buffer-config'; the
+jsonrpc bundled with Emacs 29 knows only
+`:events-buffer-scrollback-size', takes no format, and refuses the newer
+initarg as an invalid slot.  The class is probed for the newer slot
+rather than the library for a version, since the library does not say
+which it is."
   (if (memq '-events-buffer-config
             (mapcar #'eieio-slot-descriptor-name
                     (eieio-class-slots 'jsonrpc-connection)))
-      (list :events-buffer-config (list :size size :format 'full))
+      (list :events-buffer-config (list :size size :format (or format 'short)))
     (list :events-buffer-scrollback-size size)))
-
-(defun lsp-ltex-plus--events-buffer-size ()
-  "Return the size to keep the events buffer at for a new connection.
-The events buffer is the record of everything that went over the wire.
-It is unbounded under `lsp-ltex-plus-debug' and otherwise kept to a
-size that still holds a useful tail for a bug report."
-  (if lsp-ltex-plus-debug nil 2000000))
 
 (defconst lsp-ltex-plus--client-capabilities
   '(:workspace (:applyEdit :json-false
@@ -286,7 +287,8 @@ later, on its own, and turns the connection READY.  Sets
                       :notification-dispatcher #'lsp-ltex-plus--handle-notification
                       :on-shutdown #'lsp-ltex-plus--on-shutdown
                       (lsp-ltex-plus--events-buffer-initargs
-                       (lsp-ltex-plus--events-buffer-size)))))
+                       lsp-ltex-plus-events-buffer-size
+                       lsp-ltex-plus-events-buffer-format))))
     (unless lsp-ltex-plus--start-time
       (setq lsp-ltex-plus--start-time (current-time)))
     (setq lsp-ltex-plus--connection conn)
