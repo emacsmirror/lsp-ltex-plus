@@ -412,22 +412,6 @@ files the entries come from, named and followed."
 
 ;;;; -- The report --------------------------------------------------------------
 
-(defun lsp-ltex-plus-doctor--fill-column ()
-  "Return the column to wrap the report's prose at.
-The window the report is being written for, within reason: text wrapped
-at a fixed width is wrapped again by a narrower window, and the reader
-then follows two wrappings at once.  A refresh re-wraps, so widening the
-window and pressing `g\=' fits the new width."
-  (max 40 (min 72 (- (window-body-width) 4))))
-
-(defun lsp-ltex-plus-doctor--insert-paragraph (text)
-  "Insert TEXT as one indented paragraph, wrapped to the window."
-  (let ((start (point)))
-    (insert "  " text "\n")
-    (let ((fill-column (lsp-ltex-plus-doctor--fill-column))
-          (fill-prefix "  "))
-      (fill-region start (point)))))
-
 (defun lsp-ltex-plus-doctor--insert-faced (string)
   "Insert STRING at point, keeping the faces STRING carries.
 As overlays, not as text: this buffer is fontified by org, and
@@ -474,17 +458,15 @@ Everything here is inside the region the first magic comment disables,
 so none of it is offered to the server as prose."
   (insert "#+title: LTeX+ doctor\n"
           "#+options: toc:nil\n"
-          "#+startup: entitiesplain\n\n"
+          "#+startup: entitiesplain descriptivelinks\n\n"
           "  =g=  write this report again\n"
           "  =r=  restart the server\n"
           "  =v=  show the setting behind each value\n"
           "  =C-c \"=  fix the mistake at point (in the examples below)\n"
-          "  =q=  bury this buffer\n\n")
-  (lsp-ltex-plus-doctor--insert-paragraph
-   "The report is read-only, and those letters are its keys.  The examples \
-at the end are yours: type in them, break them further, and watch what \
-comes back.")
-  (insert "\n")
+          "  =q=  bury this buffer\n\n"
+          "  The report is read-only, and those letters are its keys.  The\n"
+          "  examples at the end are yours: type in them, break them further,\n"
+          "  and watch what comes back.\n\n")
   (lsp-ltex-plus-doctor--insert-section
    "Server" (lsp-ltex-plus-doctor--server-line)
    '(("java" . "The java Emacs resolves, from JAVA_HOME when that is set
@@ -502,17 +484,19 @@ such a script can export a JAVA_HOME of its own.")))
                                         (lsp-ltex-plus-doctor--logging-line))
   (lsp-ltex-plus-doctor--insert-section "Environment"
                                         (lsp-ltex-plus-doctor--environment-line))
-  (insert "* Settings for one project only\n")
-  (lsp-ltex-plus-doctor--insert-paragraph
-   "The settings above are the ones in force for the directory this report \
-was called from.  If a project needs different settings -- another \
-language, a dictionary of words that belong to it, a rule switched off -- \
-write those settings into a =.dir-locals.el= file in the top directory of \
-the project.  Most settings are read in the buffer being checked \
-([[https://github.com/ltex-plus/emacs-ltex-plus/blob/main/README.md][the \
-README]] says which), so every buffer under that directory is checked with \
-the project's settings, and so is this report when you call it from there.")
-  (insert "\n"))
+  (insert "\
+* Settings for one project only
+  The settings above are the ones in force for the directory this report
+  was called from.  If a project needs different settings -- another
+  language, a dictionary of words that belong to it, a rule switched off
+  -- write those settings into a =.dir-locals.el= file in the top
+  directory of the project.  Most settings are read in the buffer being
+  checked (the [[https://github.com/ltex-plus/emacs-ltex-plus/blob/main/\
+README.md][README]] says which), so every buffer under that directory
+  is checked with the project's settings, and so is this report when you
+  call it from there.
+
+"))
 
 (defun lsp-ltex-plus-doctor--make-overlay ()
   "Return a new overlay, on the heading just inserted, carrying a status."
@@ -571,7 +555,7 @@ after the magic comment that disabled it for the report."
       (insert "  " text "\n")
       ;; Filled, so that the sample reads in a plain window: the doctor
       ;; buffer is not one the user came to configure line wrapping for.
-      (let ((fill-column (lsp-ltex-plus-doctor--fill-column))
+      (let ((fill-column 72)
             (fill-prefix "  "))
         (fill-region beg (point)))
       ;; Insertion type nil on both markers: the sections after this one
@@ -721,22 +705,22 @@ section per sample, each switching the language for what follows it."
     (insert "* Examples")
     (setq lsp-ltex-plus-doctor--overall
           (lsp-ltex-plus-doctor--make-overlay))
-    (insert "\n")
-    (lsp-ltex-plus-doctor--insert-paragraph
-     "Three paragraphs follow, each one containing grammatical and spelling \
-mistakes on purpose, and each checked in its own language.  The line above \
-each paragraph is a [[https://ltex-plus.github.io/ltex-plus/advanced-usage\
-.html#magic-comments][magic comment]]: it sets the language for the text \
-below it, and adds the word LTeX to the dictionary of that language so that \
-the word is not underlined as a misspelling.  A dictionary is kept per \
-language, which is why the word is added again in each comment.  Both \
-settings are worth copying into documents of your own.")
-    (insert "\n")
-    (lsp-ltex-plus-doctor--insert-paragraph
-     "The server checks the whole buffer in one go, so a language used for \
-the first time keeps every paragraph waiting while a language model loads, \
-which takes a few seconds.")
-    (insert "\n")
+    (insert "\
+\n  Three paragraphs follow, each one containing grammatical and spelling
+  mistakes on purpose, and each checked in its own language.  The line
+  above each paragraph is a [[https://ltex-plus.github.io/ltex-plus/\
+advanced-usage.html#magic-comments][magic comment]]: it sets the language for the
+  text below it, and adds the word LTeX to the dictionary of that
+  language so that the word is not underlined as a misspelling.  A
+  dictionary is kept per language, which is why the word is added again
+  in each comment.  Both settings are worth copying into documents of
+  your own.
+
+  The server checks the whole buffer in one go, so a language used for
+  the first time keeps every paragraph waiting while a language model
+  loads, which takes a few seconds.
+
+")
     (setq lsp-ltex-plus-doctor--answered nil)
     (setq lsp-ltex-plus-doctor--started (float-time))
     (setq report-end (point-marker))
@@ -822,6 +806,11 @@ reads the magic comments in it.  The language id is inherited through
   ;; after the mode has started.  Set the variable too, so that the
   ;; report shows the text it was given.
   (setq-local org-pretty-entities nil)
+  ;; A URL in this report is noise; the description is the point.  The
+  ;; `#+startup:' line says the same for a copy saved to a file, which
+  ;; org reads only when it visits one.  `org-toggle-link-display'
+  ;; shows the URLs again.
+  (setq-local org-link-descriptive t)
   ;; The buffer visits no file, and a user who switched file-less
   ;; checking off did not mean this buffer.  Buffer-local rather than a
   ;; binding around the call: it has to hold for every later check too,
