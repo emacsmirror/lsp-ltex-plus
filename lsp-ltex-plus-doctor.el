@@ -458,7 +458,7 @@ Everything here is inside the region the first magic comment disables,
 so none of it is offered to the server as prose."
   (insert "#+title: LTeX+ doctor\n"
           "#+options: toc:nil\n"
-          "#+startup: entitiesplain\n\n"
+          "#+startup: entitiesplain descriptivelinks showeverything\n\n"
           "  =g=  write this report again\n"
           "  =r=  restart the server\n"
           "  =v=  show the setting behind each value\n"
@@ -733,6 +733,10 @@ advanced-usage.html#magic-comments][magic comment]]: it sets the language for th
           (nreverse lsp-ltex-plus-doctor--sections))
     (lsp-ltex-plus-doctor--protect-report report-end)
     (lsp-ltex-plus-doctor--show-status)
+    ;; Nothing folded: every section of this report is something the
+    ;; reader is meant to see without going looking for it.  Org 9.6,
+    ;; which Emacs 29 ships, is where `org-fold-show-all' arrived.
+    (org-fold-show-all)
     (setq lsp-ltex-plus-doctor--timer
           (run-at-time lsp-ltex-plus-doctor-timeout nil
                        #'lsp-ltex-plus-doctor--give-up (current-buffer)))
@@ -805,12 +809,15 @@ reads the magic comments in it.  The language id is inherited through
   ;; file is visited -- and this buffer visits none, and is written
   ;; after the mode has started.  Set the variable too, so that the
   ;; report shows the text it was given.
-  ;; Not a preference but the values: a path holding an underscore is
-  ;; rendered as a subscript with pretty entities on, and a path is
-  ;; there to be read and copied.  Links are left alone -- org hides a
-  ;; URL behind its description by default, and a reader who turned
-  ;; that off wants to see URLs here too.
+  ;; This page is written by the package, not by the reader: its line
+  ;; breaks are chosen for a link shown as its description, and a path
+  ;; holding an underscore must not be rendered as a subscript.  A
+  ;; reader who prefers raw URLs or folded headings prefers them in
+  ;; documents they wrote and know; here they would be reading a layout
+  ;; built for other settings.  `org-toggle-link-display' and TAB are
+  ;; still one keystroke away.
   (setq-local org-pretty-entities nil)
+  (setq-local org-link-descriptive t)
   ;; The buffer visits no file, and a user who switched file-less
   ;; checking off did not mean this buffer.  Buffer-local rather than a
   ;; binding around the call: it has to hold for every later check too,
