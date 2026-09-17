@@ -117,6 +117,25 @@ a JVM every time the report is written."
         (and (file-executable-p java) java))
     (executable-find "java")))
 
+(defun lsp-ltex-plus-doctor--requirement (connection version)
+  "Say whether VERSION of the server on CONNECTION clears the minimum.
+Coloured like the verdicts under the samples: green for a requirement
+that is satisfied, red for one that is not and is enforced, amber for
+one that is not and was waived, since a server kept in spite of the
+warning is the user\='s decision rather than a fault."
+  (let ((enforced lsp-ltex-plus-require-minimum-server-version))
+    (cond
+     ((not connection)
+      (if enforced "required" "not required: an older server is used anyway"))
+     ((lsp-ltex-plus--version-at-least-p
+       version lsp-ltex-plus-minimum-server-version)
+      (propertize "requirement satisfied" 'face 'success))
+     (enforced
+      (propertize "requirement not satisfied: the server was stopped"
+                  'face 'error))
+     (t (propertize "requirement not satisfied: the server is used anyway"
+                    'face 'warning)))))
+
 (defun lsp-ltex-plus-doctor--server-line ()
   "Return what is known about the server binary and the running server."
   (let* ((executable (lsp-ltex-plus--server-executable))
@@ -141,16 +160,10 @@ a JVM every time the report is written."
                 (or (lsp-ltex-plus--version-number version)
                     (if connection "none" "--")))
           (cons "Minimum version"
-                (format "%s, %s%s (~lsp-ltex-plus-minimum-server-version~, \
+                (format "%s -- %s (~lsp-ltex-plus-minimum-server-version~, \
 ~lsp-ltex-plus-require-minimum-server-version~)"
                         lsp-ltex-plus-minimum-server-version
-                        (if lsp-ltex-plus-require-minimum-server-version
-                            "required" "not required")
-                        (cond ((not connection) "")
-                              ((lsp-ltex-plus--version-at-least-p
-                                version lsp-ltex-plus-minimum-server-version)
-                               " (met)")
-                              (t " (NOT met)"))))
+                        (lsp-ltex-plus-doctor--requirement connection version)))
           (cons "JAVA_HOME"
                 (format "%s (~lsp-ltex-plus-java-path~)"
                         (if lsp-ltex-plus-java-path

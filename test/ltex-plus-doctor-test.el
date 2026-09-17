@@ -225,6 +225,30 @@ painted the same as one that is merely slow."
       (lsp-ltex-plus-doctor--on-diagnostics (current-buffer))
       (should (eq (face-of "German") 'success)))))
 
+(ert-deftest ltex-plus-doctor-test-the-version-verdict-is-coloured ()
+  "The minimum-version row says whether the requirement is satisfied.
+Green when it is, red when it is not and the server was stopped for it,
+amber when it is not and the user waived the check -- a server kept in
+spite of the warning is a decision, not a fault."
+  (cl-flet ((verdict (version enforced)
+              (cl-letf (((symbol-function 'lsp-ltex-plus--live-connection)
+                         (lambda () 'connection))
+                        ((symbol-function 'lsp-ltex-plus--connection-server-info)
+                         (lambda (_) (list :name "ltex-ls-plus" :version version)))
+                        (lsp-ltex-plus-require-minimum-server-version enforced))
+                (let ((row (cdr (assoc "Minimum version"
+                                       (lsp-ltex-plus-doctor--server-line)))))
+                  (cons (get-text-property 10 'face row) row)))))
+    (pcase-let ((`(,face . ,text) (verdict "19.0.0" t)))
+      (should (eq face 'success))
+      (should (string-match-p "requirement satisfied" text)))
+    (pcase-let ((`(,face . ,text) (verdict "18.0.0" t)))
+      (should (eq face 'error))
+      (should (string-match-p "stopped" text)))
+    (pcase-let ((`(,face . ,text) (verdict "18.0.0" nil)))
+      (should (eq face 'warning))
+      (should (string-match-p "used anyway" text)))))
+
 ;;;; -- On a server -------------------------------------------------------------
 
 (ert-deftest ltex-plus-doctor-test-the-document-is-opened-as-org ()
