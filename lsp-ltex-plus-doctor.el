@@ -627,7 +627,10 @@ each log is going."
              (when (buffer-live-p buffer)
                (with-current-buffer buffer
                  (lsp-ltex-plus-doctor--fill))))))))
-    (pop-to-buffer buffer)))
+    ;; In the window the command was called from: the report is the
+    ;; thing to read now, and a reader who wants it beside their work
+    ;; can say so in `display-buffer-alist', which this still obeys.
+    (pop-to-buffer-same-window buffer)))
 
 (provide 'lsp-ltex-plus-doctor)
 ;;; lsp-ltex-plus-doctor.el ends here
