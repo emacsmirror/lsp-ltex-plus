@@ -118,8 +118,8 @@ finding in the buffer."
                 (ltex-plus-doctor-test--diagnostic-on "Rechtschreibfelern")))
     (lsp-ltex-plus-doctor--on-diagnostics (current-buffer))
     (should (equal (ltex-plus-doctor-test--status "English (en-US, your language)")
-                   "  1 finding"))
-    (should (equal (ltex-plus-doctor-test--status "German") "  1 finding"))
+                   "  mistakes found"))
+    (should (equal (ltex-plus-doctor-test--status "German") "  mistakes found"))
     (should (string-match-p "waiting"
                             (ltex-plus-doctor-test--status "French")))))
 
@@ -152,7 +152,9 @@ it was waiting would be waiting for something nobody sent."
 (ert-deftest ltex-plus-doctor-test-the-timing-is-for-the-whole-check ()
   "One timing, on the samples' heading, not one per section.
 The server checks the whole document and publishes once, so a
-per-section time would be the same number repeated."
+per-section time would be the same number repeated.  No count anywhere:
+how many mistakes LanguageTool reports depends on the account behind
+the server."
   (ltex-plus-doctor-test--with-report
     (ltex-plus-doctor-test--pretend-checked)
     (setq lsp-ltex-plus--diagnostics
@@ -162,9 +164,9 @@ per-section time would be the same number repeated."
              "checked in [0-9.]+ s"
              (substring-no-properties
               (overlay-get lsp-ltex-plus-doctor--overall 'after-string))))
-    (should-not (string-match-p
-                 " s\\'" (ltex-plus-doctor-test--status
-                          "English (en-US, your language)")))))
+    (should (equal (ltex-plus-doctor-test--status
+                    "English (en-US, your language)")
+                   "  mistakes found"))))
 
 (ert-deftest ltex-plus-doctor-test-a-refresh-leaves-other-overlays-alone ()
   "Writing the report again deletes the doctor's overlays and no others.

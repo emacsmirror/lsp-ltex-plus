@@ -630,23 +630,28 @@ All variables mentioned below are standard Emacs customization options. If you u
 
 One buffer that answers *is LTeX+ working, and with what?* The report names the server binary Emacs found, the version that server reports and the version number compared against the minimum, whether the connection is up, the settings every check is made with, which logs are switched on, and the Emacs, `jsonrpc` and `lsp-ltex-plus` versions. Copy the whole buffer with `C-x h M-w` and a bug report is written.
 
-Below the report the doctor checks itself. Every sample contains deliberate mistakes, and a [magic comment](https://ltex-plus.github.io/ltex-plus/advanced-usage.html#magic-comments) above each sample sets the language for the sample that follows, so one buffer is checked in three languages at once:
+Below the report the doctor checks itself, under an `* Examples` heading. Three paragraphs follow, each one wrong on purpose and each checked in its own language; the line above each paragraph is a [magic comment](https://ltex-plus.github.io/ltex-plus/advanced-usage.html#magic-comments) that sets the language for the text below it and adds the name `LTeX` to the dictionary of that language, so the package name is not underlined in its own doctor:
 
 ```org
-* English (en-US, your language)     … findings
-  Are you tired of silly spellling mistakes in you're notes? This
-  sentance is wrong on purpose, so LTeX+ has something to catch.
-* French                             … findings
-  Fatigué des fautes d'ortographe dans vos notes ? Cette phrase est
-  fausse exprès, pour que LTeX+ ai quelque chose à corriger.
-* German                             … findings
-  Müde von dummen Rechtschreibfelern in Ihren Notizen? Dieser Satz ist
-  absichtlick falsch, damit LTeX+ etwas zu finden hat.
+# LTeX: enabled=true language=en-US dictionary+=LTeX
+** English (en-US, your language)          mistakes found
+  Are you tired of silly spellling mistakes in you're notes? LTeX+ finds
+  them before your reviewer does, and this very sentance proves it.
+
+# LTeX: language=fr-FR dictionary+=LTeX
+** French                                  mistakes found
+  Fatigué des fautes d'ortographe dans vos notes ? LTeX+ les trouve
+  avant votre relecteur, et cette phrase, avec tout ses fautes, le prouve.
+
+# LTeX: language=de-DE dictionary+=LTeX
+** German                                  mistakes found
+  Müde von dummen Rechtschreibfelern in Ihren Notizen? LTeX+ findet sie
+  vor Ihrem Korrektor, und dieser Satz ist absichtlick falsch.
 ```
 
-Each heading carries the number of mistakes that came back. How many that is depends on the LanguageTool behind the server — a Premium account or your own LanguageTool server finds mistakes the bundled one does not — so the numbers here are deliberately left blank.
+Those two magic-comment settings are worth copying into your own documents — a language for one file, a word for one language's dictionary — and the doctor is a working example of both.
 
-The same magic comments add `LTeX` to each language's dictionary, so the package name is not underlined as a misspelling — a working example of both magic-comment features, sitting in the buffer to be copied into your own documents.
+A heading says `mistakes found`, never how many: how many mistakes come back depends on the LanguageTool behind the server, since a Premium account or your own LanguageTool server finds mistakes the bundled one does not.
 
 **A heading never goes quiet to mean "nothing wrong"**, because every sample is wrong on purpose: a heading with no count says `waiting for LTeX+ to answer` while the check is out, and after thirty seconds `no answer after 30 seconds: the server may have run out of memory while loading this language`, which names `lsp-ltex-plus-java-max-heap` as the setting to raise. LTeX+ checks the whole buffer in one go, so a language used for the first time keeps every heading waiting while the server loads a language model — a few seconds.
 

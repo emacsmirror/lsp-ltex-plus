@@ -32,14 +32,14 @@
 
 (defcustom lsp-ltex-plus-doctor-samples
   '(("en-US" "English"
-     "Are you tired of silly spellling mistakes in you're notes? This \
-sentance is wrong on purpose, so LTeX+ has something to catch.")
+     "Are you tired of silly spellling mistakes in you're notes? LTeX+ \
+finds them before your reviewer does, and this very sentance proves it.")
     ("fr-FR" "French"
-     "Fatigué des fautes d'ortographe dans vos notes ? Cette phrase est \
-fausse exprès, pour que LTeX+ ai quelque chose à corriger.")
+     "Fatigué des fautes d'ortographe dans vos notes ? LTeX+ les trouve \
+avant votre relecteur, et cette phrase, avec tout ses fautes, le prouve.")
     ("de-DE" "German"
-     "Müde von dummen Rechtschreibfelern in Ihren Notizen? Dieser Satz ist \
-absichtlick falsch, damit LTeX+ etwas zu finden hat."))
+     "Müde von dummen Rechtschreibfelern in Ihren Notizen? LTeX+ findet \
+sie vor Ihrem Korrektor, und dieser Satz ist absichtlick falsch."))
   "Sample texts the doctor has the server check, one per language.
 Each entry is (LANGUAGE LABEL TEXT).  LANGUAGE is an `ltex.language\='
 code, which the doctor puts in a magic comment so that one document can
@@ -362,7 +362,7 @@ after the magic comment that disabled it for the report."
     ;; times over.
     (insert (format "# LTeX: %slanguage=%s dictionary+=LTeX\n"
                     (if first "enabled=true " "") language))
-    (insert "* " label "\n")
+    (insert "** " label "\n")
     (let ((overlay (lsp-ltex-plus-doctor--make-overlay))
           (beg (point-marker)))
       (insert "  " text "\n")
@@ -393,7 +393,7 @@ after the magic comment that disabled it for the report."
   "Return the status string SECTION should be showing."
   (let ((found (plist-get section :found)))
     (cond
-     (found (propertize (format "  %s" found) 'face 'success))
+     (found (propertize "  mistakes found" 'face 'success))
      ((not lsp-ltex-plus-mode)
       (propertize "  not checked: LTeX+ sent nothing.  See the Server section \
 above." 'face 'error))
@@ -440,8 +440,10 @@ a later publish saying the same thing must not reset it."
     (dolist (section lsp-ltex-plus-doctor--sections)
       (let ((count (lsp-ltex-plus-doctor--count-in section)))
         (when (and (> count 0) (not (plist-get section :found)))
-          (plist-put section :found
-                     (format "%d finding%s" count (if (= count 1) "" "s"))))))
+          ;; What came back, not how much of it: how many mistakes
+          ;; LanguageTool reports depends on the account behind the
+          ;; server, so a number here would be a number to argue with.
+          (plist-put section :found t))))
     (lsp-ltex-plus-doctor--show-status)))
 
 (defun lsp-ltex-plus-doctor--give-up (buffer)
@@ -474,14 +476,19 @@ section per sample, each switching the language for what follows it."
     ;; https://ltex-plus.github.io/ltex-plus/advanced-usage.html#magic-comments
     (insert "# LTeX: enabled=false\n")
     (lsp-ltex-plus-doctor--insert-report)
-    (insert "* Is it working?")
+    (insert "* Examples")
     (setq lsp-ltex-plus-doctor--overall
           (lsp-ltex-plus-doctor--make-overlay))
     (insert "\n"
-            "  Every sample below contains deliberate mistakes, and each\n"
-            "  sample is checked in the language named in the comment above\n"
-            "  the sample.  Each heading says how many mistakes LTeX+ found.\n"
-            "  LTeX+ checks the whole document in one go, so a language used\n"
+            "  Three paragraphs follow, each one wrong on purpose and each\n"
+            "  checked in its own language.  The line above each paragraph\n"
+            "  is a [[https://ltex-plus.github.io/ltex-plus/advanced-usage.\
+html#magic-comments][magic comment]]: the comment sets the language for\n"
+            "  the text below it, and adds the name LTeX to the dictionary\n"
+            "  of that language, so that the name of this package is not\n"
+            "  underlined as a misspelling.  Copy either setting into your\n"
+            "  own documents.\n\n"
+            "  LTeX+ checks the whole buffer in one go, so a language used\n"
             "  for the first time keeps every heading waiting while the\n"
             "  server loads a language model, which takes a few seconds.\n\n")
     (setq lsp-ltex-plus-doctor--answered nil)
