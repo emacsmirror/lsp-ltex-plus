@@ -166,6 +166,29 @@ per-section time would be the same number repeated."
                  " s\\'" (ltex-plus-doctor-test--status
                           "English (en-US, your language)")))))
 
+(ert-deftest ltex-plus-doctor-test-a-refresh-leaves-other-overlays-alone ()
+  "Writing the report again deletes the doctor's overlays and no others.
+The buffer is an org buffer with a diagnostics front-end on it and
+whatever else the user runs in org.  `org-num-mode' stands for all of
+them here: it keeps a list of the overlays it made, and a blanket
+`remove-overlays' leaves that list full of dead ones, after which the
+next change to the buffer fails with a nil position -- in a backtrace
+that names nothing of ours."
+  (require 'org-num)
+  (ltex-plus-doctor-test--with-report
+    (org-num-mode 1)
+    (should (> (length org-num--overlays) 0))
+    (let ((theirs (length org-num--overlays)))
+      (lsp-ltex-plus-doctor--fill)
+      (should (= theirs (seq-count #'overlay-start
+                                   (append org-num--overlays nil))))
+      ;; And ours are replaced, not accumulated: one per sample and one
+      ;; for the check as a whole.
+      (should (= (1+ (length lsp-ltex-plus-doctor--sections))
+                 (seq-count (lambda (overlay)
+                              (overlay-get overlay 'lsp-ltex-plus-doctor))
+                            (overlays-in (point-min) (point-max))))))))
+
 ;;;; -- On a server -------------------------------------------------------------
 
 (ert-deftest ltex-plus-doctor-test-the-document-is-opened-as-org ()

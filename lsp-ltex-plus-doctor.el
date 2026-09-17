@@ -244,6 +244,24 @@ so none of it is offered to the server as prose."
           "  about.  So what a project's buffers are checked with may not\n"
           "  be what this page shows.\n\n"))
 
+(defun lsp-ltex-plus-doctor--make-overlay ()
+  "Return a new overlay, on the heading just inserted, carrying a status."
+  (let ((overlay (make-overlay (1- (point)) (point) nil t nil)))
+    (overlay-put overlay 'lsp-ltex-plus-doctor t)
+    overlay))
+
+(defun lsp-ltex-plus-doctor--delete-overlays ()
+  "Delete the overlays this report made, and only those.
+Never `remove-overlays\=': this is an org buffer with a flymake or
+flycheck front-end on it, and whatever else the user runs in org.  A
+blanket sweep takes their overlays too, and a mode that keeps a list of
+its own -- `org-num-mode\=' does -- then fails on the next change with a
+nil position, in a backtrace naming nothing of ours."
+  (dolist (overlay (overlays-in (point-min) (point-max)))
+    (when (overlay-get overlay 'lsp-ltex-plus-doctor)
+      (delete-overlay overlay)))
+  (setq lsp-ltex-plus-doctor--overall nil))
+
 (defun lsp-ltex-plus-doctor--ordered-samples ()
   "Return `lsp-ltex-plus-doctor-samples\=', the configured language first.
 A sample for exactly `lsp-ltex-plus-language\=' leads; failing that, one
@@ -275,7 +293,7 @@ after the magic comment that disabled it for the report."
     (insert (format "# LTeX: %slanguage=%s\n"
                     (if first "enabled=true " "") language))
     (insert "* " label "\n")
-    (let ((overlay (make-overlay (1- (point)) (point) nil t nil))
+    (let ((overlay (lsp-ltex-plus-doctor--make-overlay))
           (beg (point-marker)))
       (insert "  " text "\n\n")
       ;; Insertion type nil, both markers: the sections after this one
@@ -372,7 +390,7 @@ section per sample, each switching the language for what follows it."
   (let ((inhibit-read-only t)
         (samples (lsp-ltex-plus-doctor--ordered-samples)))
     (lsp-ltex-plus-doctor--cancel-timer)
-    (remove-overlays)
+    (lsp-ltex-plus-doctor--delete-overlays)
     (setq lsp-ltex-plus-doctor--sections nil)
     (erase-buffer)
     ;; Line one, and it governs everything after it: the report is not
@@ -382,7 +400,7 @@ section per sample, each switching the language for what follows it."
     (lsp-ltex-plus-doctor--insert-report)
     (insert "* Is it working?")
     (setq lsp-ltex-plus-doctor--overall
-          (make-overlay (1- (point)) (point) nil t nil))
+          (lsp-ltex-plus-doctor--make-overlay))
     (insert "\n"
             "  Each sample below is wrong on purpose, and is checked in its\n"
             "  own language; the heading of each says what came back.  The\n"
