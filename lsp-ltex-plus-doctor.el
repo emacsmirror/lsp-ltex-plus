@@ -197,8 +197,14 @@ handshake complete")
           (cons "Root"
                 (lsp-ltex-plus-doctor--path
                  (and connection (lsp-ltex-plus--connection-root connection))))
+          ;; Not a count until there is a server to hold them.  With no
+          ;; connection the honest answer is the same "--" as the root
+          ;; beside it: a plain 0 reads as "the server has nothing open",
+          ;; which is a different statement from "there is no server".
           (cons "Documents open"
-                (format "%d" (hash-table-count lsp-ltex-plus--documents))))))
+                (if connection
+                    (format "%d" (hash-table-count lsp-ltex-plus--documents))
+                  "--")))))
 
 (defun lsp-ltex-plus-doctor--buffer-line ()
   "Return what is in force in the doctor buffer itself."
