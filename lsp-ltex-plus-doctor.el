@@ -288,8 +288,11 @@ LanguageTool and by the hosted one comes back with different mistakes,
 so a report that did not say which was in use would explain nothing."
   (list (cons "Checker"
               (concat (if lsp-ltex-plus-lt-server-uri
+                          ;; A link with no description of its own, so
+                          ;; the URI is what is shown and following it
+                          ;; goes where the checking goes.
                           (format "over the network, at %s"
-                                  (lsp-ltex-plus-doctor--path
+                                  (org-link-make-string
                                    lsp-ltex-plus-lt-server-uri))
                         "local and offline -- the one built into ltex-ls-plus")
                       (lsp-ltex-plus-doctor--options
