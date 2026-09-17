@@ -112,7 +112,7 @@ Nothing is refused when the version cannot be determined at all."
 
 (defcustom lsp-ltex-plus-debug nil
   "When non-nil, log what the client does and keep the whole wire.
-The client's own log goes to the `*lsp-ltex-plus::client*\\=' buffer.
+The client's own log goes to the `*lsp-ltex-plus log*\\=' buffer.
 The exchange with the server is always recorded in the jsonrpc events
 buffer, `*ltex-ls-plus events*\\='; under this option that buffer is
 unbounded rather than capped, and the server is asked for its own
@@ -672,8 +672,8 @@ an existing user config passes through unchanged."
                              (or lsp-ltex-plus--start-time before-init-time))))
 
 (defun lsp-ltex-plus--log-to-buffer (msg)
-  "Write MSG with a timestamp to the *lsp-ltex-plus::client* buffer."
-  (with-current-buffer (get-buffer-create "*lsp-ltex-plus::client*")
+  "Write MSG with a timestamp to the *lsp-ltex-plus log* buffer."
+  (with-current-buffer (get-buffer-create "*lsp-ltex-plus log*")
     (let ((inhibit-read-only t))
       (goto-char (point-max))
       (insert (format "[%10.3f] %s\n" (lsp-ltex-plus--elapsed) msg))
