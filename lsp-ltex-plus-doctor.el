@@ -700,7 +700,16 @@ This buffer visits no file, so Emacs applies none by itself.  The
 doctor is called from somewhere, though, and a reader who calls it
 inside a project is asking about that project: its language, its
 dictionary, its rules.  Read again at every refresh, so that an edited
-=.dir-locals.el= takes effect on `g\='."
+=.dir-locals.el= takes effect on `g\='.
+
+The values of the last directory are undone first.  This buffer is
+reused: without that, a language set by the project the doctor was
+called from an hour ago would still be in force here, and a directory
+with no =.dir-locals.el= at all would report somebody else's
+settings."
+  (dolist (pair file-local-variables-alist)
+    (kill-local-variable (car pair)))
+  (setq file-local-variables-alist nil)
   (hack-dir-local-variables-non-file-buffer))
 
 (defun lsp-ltex-plus-doctor--fill ()
@@ -856,10 +865,15 @@ Shows the server it found and what that server says about itself, the
 state of the connection, the settings a check is made with, and where
 each log is going."
   (interactive)
-  (let ((buffer (get-buffer-create lsp-ltex-plus-doctor-buffer-name)))
+  (let ((buffer (get-buffer-create lsp-ltex-plus-doctor-buffer-name))
+        (directory default-directory))
     (with-current-buffer buffer
       (unless (derived-mode-p 'lsp-ltex-plus-doctor-mode)
         (lsp-ltex-plus-doctor-mode))
+      ;; Every time, not only when the buffer is new: the report is
+      ;; about the directory the command was called from, and a buried
+      ;; doctor called again from elsewhere is about the new one.
+      (setq default-directory directory)
       (lsp-ltex-plus-doctor--fill)
       ;; Explicitly, not through the dispatcher: this buffer is checked
       ;; whatever set of modes the user enabled the package for.

@@ -341,6 +341,14 @@ project's own buffers are."
             (should (equal (plist-get (car lsp-ltex-plus-doctor--sections)
                                       :language)
                            "de-DE"))
+            ;; Called again from a directory with no settings of its
+            ;; own, the report is about that directory: the buffer is
+            ;; reused, so the values of the last one have to go.
+            (setq default-directory temporary-file-directory)
+            (lsp-ltex-plus-doctor--fill)
+            (should (equal lsp-ltex-plus-language
+                           (default-value 'lsp-ltex-plus-language)))
+            (should-not (local-variable-p 'lsp-ltex-plus-language))
             (lsp-ltex-plus-doctor--cancel-timer)))
       (kill-buffer buffer)
       (delete-directory directory t))))
