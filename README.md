@@ -71,15 +71,19 @@ LTeX+ can operate in two distinct ways, depending on your needs:
 
 Two things happen between your keystroke and the underline, and only the second one is the grammar checker.
 
-**The wait.** `lsp-ltex-plus-idle-delay` (default 0.5 s) is how long after your *last* keystroke the buffer is sent. Every edit restarts it, so while you type steadily nothing goes out; a burst of typing is sent once, when it stops. That is deliberate — the server re-checks the whole document on every send — but it means the underlines follow your pauses, not your keystrokes. Lower the delay for quicker feedback; raise it on a slow machine or for very large documents. There is no other cadence to tune: flymake, or flycheck, draws the underlines the moment the answer arrives.
+| Apple M2, `ltex-ls-plus` 19.0 | Local backend | Hosted service, Premium |
+| :--- | :--- | :--- |
+| The pause you leave before anything is sent | 0.5 s (`lsp-ltex-plus-idle-delay`) | the same |
+| Re-check of a page of Org prose (3 KB) | **40 ms** | **0.7 s** |
+| Re-check of a LaTeX document (15 KB) | **60–100 ms** | **0.9 s** |
+| First check of a document, nothing cached yet | 0.5 s | 2 s |
+| First checked buffer of a session | about 6 s, once: the server starts | the same |
 
-**The check.** Measured on an Apple M2 with `ltex-ls-plus` 19.0 and the local backend: a page of Org prose (about 3 KB) comes back in about **40 ms**, a 15 KB LaTeX document in **60–100 ms**. So with the default delay you see a correction roughly half a second after you stop typing, and the half second is almost all of it.
+**The wait is the part you choose.** `lsp-ltex-plus-idle-delay` is how long after your *last* keystroke the buffer is sent, and every edit restarts it: while you type steadily nothing goes out, and a burst of typing is sent once, when it stops. That is deliberate — the server re-checks the whole document on every send — but it means the underlines follow your pauses, not your keystrokes. Lower it for quicker feedback; raise it on a slow machine or for very large documents. There is no other cadence to tune: flymake, or flycheck, draws the underlines the moment the answer arrives.
 
-Two slower moments are worth expecting. The **first checked buffer of a session** waits for the server to start — a JVM and a language model, about **6 seconds**, once (see [Startup Delay When Opening the First Buffer](#startup-delay-when-opening-the-first-buffer)). And the **first check of each document** is slower than the ones after it, because the server has no cached sentences for it yet: about **half a second** for that 15 KB LaTeX document.
+**The check is the small part of it,** locally: with the default delay you see a correction about half a second after you stop typing, and the half second is almost all of it. The hosted service is an order of magnitude slower, the occasional answer takes twice what the table says, and network conditions and how busy the service is decide — so treat those figures as the shape of it rather than as measurements. That is the trade-off for Premium-only rules; the local backend is what most users will want for interactive writing. The one-off six seconds is the JVM and LanguageTool's language model loading, whichever backend you use (see [Startup Delay When Opening the First Buffer](#startup-delay-when-opening-the-first-buffer)).
 
-A remote LanguageTool server is an order of magnitude slower: pointed at the hosted service, with a Premium account, the same two documents came back in **0.7–0.9 s**, with the occasional answer taking twice that and the first check of a document about **2 s**. Network conditions and how busy the service is decide, so treat these as the shape of it rather than as figures. That is the trade-off for Premium-only rules; the local backend is what most users will want for interactive writing.
-
-The numbers above can be taken again on your own machine: `make bench`, or `M-x lsp-ltex-plus-benchmark` in your own Emacs for a configuration this repository knows nothing about — see [`dev/benchmark.el`](dev/benchmark.el).
+The numbers can be taken again on your own machine: `make bench`, or `M-x lsp-ltex-plus-benchmark` in your own Emacs for a configuration this repository knows nothing about — see [`dev/benchmark.el`](dev/benchmark.el).
 
 Nothing about the exchange is recorded by default. If you want to see it yourself, with timestamps, switch on the logging described under [Logging](#logging).
 
