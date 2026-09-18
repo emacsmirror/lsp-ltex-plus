@@ -18,7 +18,7 @@
 
 *Developed and tested on Emacs 31.1. Requires Emacs 29.1 or later.*
 
-This package gives you professional-grade grammar checking in Emacs while you write Markdown, LaTeX, Org-mode, Magit commit messages, and more — and also checks grammar and spelling inside comments and string literals of 30+ programming languages. It runs quietly beside your existing language servers, whatever client drives them, without interfering with them. With the local backend, checks typically complete fast enough to feel instant while you type — see [Performance](#performance).
+This package gives you professional-grade grammar checking in Emacs while you write Markdown, LaTeX, Org-mode, Magit commit messages, and more — and also checks grammar and spelling inside comments and string literals of 30+ programming languages. It runs quietly beside your existing language servers, whatever client drives them, without interfering with them. With the local backend a check takes tens of milliseconds; you get it shortly after you pause typing — see [Performance](#performance).
 
 ![LTeX+ in action](screenshot.jpg)
 *LTeX+ in action: `C-c "` offers the server's suggestions, allowing you to choose the suitable correction (e.g., fixing "your" to "you're" in the example above). The key is `lsp-ltex-plus-actions-key`.*
@@ -69,13 +69,19 @@ LTeX+ can operate in two distinct ways, depending on your needs:
 
 ## Performance
 
-`lsp-ltex-plus` is fast. On an Apple M2, grammar checking a full-page Markdown or Org buffer completes in about **70 ms**, and a longer LaTeX document (around 15 KB) in about **150 ms** — both comfortably inside the threshold that feels instantaneous while typing.
+Two things happen between your keystroke and the underline, and only the second one is the grammar checker.
 
-There is one knob on this side: `lsp-ltex-plus-idle-delay` (default 0.5 s), how long after your last keystroke the buffer is sent to the server. Every edit restarts the wait, so a burst of typing is sent once, when it pauses. Lower it for quicker feedback; raise it on a slow machine or for very large files. The server re-checks the whole document on each send, so this is the whole trade-off. Flymake, or flycheck, draws the underlines the moment the server's answer arrives; there is no second cadence to tune.
+**The wait.** `lsp-ltex-plus-idle-delay` (default 0.5 s) is how long after your *last* keystroke the buffer is sent. Every edit restarts it, so while you type steadily nothing goes out; a burst of typing is sent once, when it stops. That is deliberate — the server re-checks the whole document on every send — but it means the underlines follow your pauses, not your keystrokes. Lower the delay for quicker feedback; raise it on a slow machine or for very large documents. There is no other cadence to tune: flymake, or flycheck, draws the underlines the moment the answer arrives.
 
-A remote LanguageTool server is noticeably slower: pointed at the hosted service, the round-trip stretches to roughly **1–4 seconds** depending on network conditions and how busy the service is. That is the trade-off for Premium-only rules; the local backend is what most users will want for interactive writing.
+**The check.** Measured on an Apple M2 with `ltex-ls-plus` 19.0 and the local backend: a page of Org prose (about 3 KB) comes back in about **40 ms**, a 15 KB LaTeX document in **60–100 ms**. So with the default delay you see a correction roughly half a second after you stop typing, and the half second is almost all of it.
 
-To see the exchange itself, with timestamps, ask for it first — nothing is recorded by default; see [Logging](#logging).
+Two slower moments are worth expecting. The **first checked buffer of a session** waits for the server to start — a JVM and a language model, about **6 seconds**, once (see [Startup Delay When Opening the First Buffer](#startup-delay-when-opening-the-first-buffer)). And the **first check of each document** is slower than the ones after it, because the server has no cached sentences for it yet: about **half a second** for that 15 KB LaTeX document.
+
+A remote LanguageTool server is an order of magnitude slower: pointed at the hosted service, with a Premium account, the same two documents came back in **0.7–0.9 s**, with the occasional answer taking twice that and the first check of a document about **2 s**. Network conditions and how busy the service is decide, so treat these as the shape of it rather than as figures. That is the trade-off for Premium-only rules; the local backend is what most users will want for interactive writing.
+
+The numbers above can be taken again on your own machine: `make bench`, or `M-x lsp-ltex-plus-benchmark` in your own Emacs for a configuration this repository knows nothing about — see [`dev/benchmark.el`](dev/benchmark.el).
+
+Nothing about the exchange is recorded by default. If you want to see it yourself, with timestamps, switch on the logging described under [Logging](#logging).
 
 ## Prerequisites
 
