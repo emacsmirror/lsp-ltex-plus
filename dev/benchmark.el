@@ -22,9 +22,16 @@
 ;; Two documents, after the two the README talks about: a page of Org
 ;; prose and a 15 KB LaTeX document.  Each is opened (the cold check),
 ;; then edited and re-sent seven times (the warm ones).  Every edit adds
-;; a new sentence, so the server's paragraph cache cannot answer from
-;; what it saw last time -- an unchanged document comes back in a few
-;; milliseconds and means nothing.
+;; a sentence carrying the run number, so the paragraph it lands in is
+;; text the server has never seen and neither its paragraph cache nor
+;; LanguageTool's sentence cache can answer for it.  Without that the
+;; measurement is worthless: re-sending the page of Org prose unchanged
+;; comes back in 11 ms against 35, which is the cache being timed and
+;; not the check.  The same comparison on the LaTeX document is 60 ms
+;; against 70-85, and the difference between those two is the honest
+;; reading of where a large document's time goes -- almost all of it is
+;; the whole text being sent and parsed again, not the paragraph that
+;; changed.
 ;;
 ;; Two ways to run it, and they measure different things:
 ;;
@@ -47,6 +54,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'subr-x)
 (require 'org)
 (require 'lsp-ltex-plus)
 
@@ -138,14 +146,27 @@ measurement does not depend on a temporary directory."
     buffer))
 
 (defun lsp-ltex-plus-benchmark--edit (buffer counter)
-  "Add a sentence numbered COUNTER near the end of BUFFER.
+  "Add a sentence numbered COUNTER to the last paragraph of BUFFER.
 A different document every time, so that the server's paragraph cache
-cannot answer with what it found before."
+cannot answer with what it found before.  The sentence is appended to a
+paragraph that is already there, rather than set apart as one of its
+own: what a writer does is add to the paragraph being written, which
+dirties a paragraph the server had cached.  A new paragraph between
+blank lines would leave every existing one cached and measure a lighter
+check than typing produces."
   (with-current-buffer buffer
     (save-excursion
       (goto-char (point-max))
-      (forward-line -2)
-      (insert (format "Run number %d of the measurement.\n" counter)))))
+      (while (and (not (bobp))
+                  (progn (forward-line -1)
+                         (let ((line (buffer-substring (line-beginning-position)
+                                                       (line-end-position))))
+                           (or (string-blank-p line)
+                               ;; Markup, not prose: \section{...},
+                               ;; \end{document}, an Org heading or keyword.
+                               (string-match-p "\\`[\\\\#*]" line))))))
+      (end-of-line)
+      (insert (format " Run number %d of the measurement." counter)))))
 
 (defun lsp-ltex-plus-benchmark--document (label mode text)
   "Time the checks of a document LABEL, in MODE, holding TEXT.
