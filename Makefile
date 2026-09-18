@@ -4,6 +4,7 @@
 #   make test       run the ERT suite (test/); live tests skip
 #   make test-live  the same, with the tests that need a real ltex-ls-plus
 #   make live-repl  a daemon with the live fixture loaded, for debugging
+#   make bench      time the server's answers (needs a real ltex-ls-plus)
 #   make compile    byte-compile the package files, warnings and all
 #   make checkdoc   docstring conventions
 #   make lint       package-lint, as MELPA runs it
@@ -67,7 +68,7 @@ LIVE_REPL_SETUP := --eval '(progn \
   (require (quote ltex-plus-live-helper)) \
   (ltex-plus-live-configure))'
 
-.PHONY: all check test test-live live-repl compile checkdoc lint clean
+.PHONY: all check test test-live live-repl bench compile checkdoc lint clean
 
 all: check
 
@@ -92,6 +93,15 @@ live-repl:
 	@echo '  emacsclient -s ltex-test -e "(ltex-plus-live-open (ltex-plus-live-write \"x.md\" \"He go home.\\n\"))"'
 	@echo '  emacsclient -s ltex-test -e "(ltex-plus-live-messages)"'
 	@echo '  emacsclient -s ltex-test -e "(kill-emacs)"'
+
+# The numbers in the README's Performance section.  Starts a real server
+# with stock settings, so what it measures is the bundled LanguageTool,
+# offline.  For the remote figure, run `lsp-ltex-plus-benchmark' in your
+# own Emacs, which is where the credentials are -- see the commentary in
+# dev/benchmark.el.
+bench:
+	@$(EMACS) --batch -Q -L . -l dev/benchmark.el \
+	  -f lsp-ltex-plus-benchmark-batch
 
 # Byte-compilation is a check in its own right: it is what catches a free
 # variable, a call with the wrong number of arguments, or a docstring that
