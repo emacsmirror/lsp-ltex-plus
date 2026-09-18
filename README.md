@@ -14,7 +14,7 @@
 <!-- ltex: dictionary+=jsonrpc -->
 <!-- ltex: dictionary+=flymake -->
 
-`lsp-ltex-plus` is a lightweight Emacs client for **LTeX+**, a powerful grammar and spell checker powered by [LanguageTool](https://languagetool.org/). It speaks the Language Server Protocol to the `ltex-ls-plus` server over the `jsonrpc` library that ships with Emacs, and shows the server's findings through flymake — or through flycheck, if you prefer. It depends on nothing outside Emacs itself.
+`lsp-ltex-plus` is an Emacs client for **LTeX+**, a powerful grammar and spell checker powered by [LanguageTool](https://languagetool.org/). **It needs no other Emacs package.** It speaks the Language Server Protocol to the `ltex-ls-plus` server over `jsonrpc`, which is part of Emacs, and shows the server's findings through flymake, also part of Emacs — or through flycheck, if you prefer.
 
 *Developed and tested on Emacs 31.1. Requires Emacs 29.1 or later.*
 
