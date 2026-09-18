@@ -142,7 +142,7 @@ the buffer then grows for as long as Emacs runs.
 Read when the server starts; `lsp-ltex-plus-restart-server\\=' applies a
 change.  See also `lsp-ltex-plus-events-buffer-format\\='."
   :type '(choice (const :tag "Record nothing" 0)
-                 (integer :tag "Bytes to keep")
+                 (integer :tag "Characters to keep")
                  (const :tag "No limit (jsonrpc\='s default)" nil))
   :group 'lsp-ltex-plus)
 

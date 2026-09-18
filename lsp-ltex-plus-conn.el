@@ -219,7 +219,7 @@ connection called NAME, which is how the two end up coupled."
                   :stderr (get-buffer-create (format "*%s stderr*" name)))))
 
 (defun lsp-ltex-plus--events-buffer-initargs (size &optional format)
-  "Return the initargs that keep SIZE bytes of the exchange, in FORMAT.
+  "Return the initargs that keep SIZE characters of the exchange, in FORMAT.
 SIZE nil means unbounded and 0 means nothing is recorded.  FORMAT is
 `short' or `full' and defaults to `short'.  jsonrpc 1.0.19, bundled from
 Emacs 30, configures the buffer through `:events-buffer-config'; the

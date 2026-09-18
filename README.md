@@ -821,7 +821,7 @@ Nothing is logged by default, and each record has one setting that turns it on. 
 | What you want to know | Where it goes | How to turn it on |
 | :--- | :--- | :--- |
 | What the client decided — which buffer it checked, which it skipped and why, where an added word was saved | `*lsp-ltex-plus log*` | `lsp-ltex-plus-debug` to `t`; takes effect at once |
-| Which messages are crossing the wire, and how long the server takes to answer | `*ltex-ls-plus events*` | `lsp-ltex-plus-events-buffer-size` to a positive number of bytes, e.g. `200000`; `lsp-ltex-plus-events-buffer-format` says whether each line carries its JSON too. Restart the server |
+| Which messages are crossing the wire, and how long the server takes to answer | `*ltex-ls-plus events*` | `lsp-ltex-plus-events-buffer-size` to a positive number of characters, e.g. `200000`; `lsp-ltex-plus-events-buffer-format` says whether each line carries its JSON too. Restart the server |
 | What the server thinks it is doing | `*ltex-ls-plus stderr*` | `lsp-ltex-plus-ltex-ls-log-level`; restart the server |
 | **Everything**, both directions, in one file | the file you name | `lsp-ltex-plus-server-log-file`; restart the server |
 
