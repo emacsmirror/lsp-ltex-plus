@@ -1,6 +1,8 @@
 #+TITLE: Unlocking Professional Grammar in Emacs
 #+AUTHOR: LTeX+ for Everyone
 
+# ltex: DICTIONARY+=lsp-ltex-plus language=en-US
+
 * Welcome to the Future of Writing!
 Are you tired of making silly spellling mistakes in your Org-mode notes?
 Does your grammar sometimes feels a bit "off" when you're writing your thesis?
