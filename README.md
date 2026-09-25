@@ -20,7 +20,7 @@
 
 This package gives you professional-grade grammar checking in Emacs while you write Markdown, LaTeX, Org-mode, Magit commit messages, and more — and also checks grammar and spelling inside comments and string literals of 30+ programming languages. It runs quietly beside your existing language servers, whatever client drives them, without interfering with them. With the local backend a check takes tens of milliseconds; you get it shortly after you pause typing — see [Performance](#performance).
 
-![LTeX+ in action](screenshot.jpg)
+![LTeX+ in action](screenshot.png)
 *LTeX+ in action: `C-c "` offers the server's suggestions, allowing you to choose a suitable correction (e.g., fixing "your" to "you're" in the example above). The key is `lsp-ltex-plus-actions-key`.*
 
 **Start with `M-x lsp-ltex-plus-doctor`.** It opens one page that says which server you are running, which LanguageTool is behind it, and what every setting is set to — and then checks itself, in three languages, on paragraphs that are wrong on purpose. If grammar checking works, you see it working; if it does not, the page says what is missing. See [Start here](#start-here-m-x-lsp-ltex-plus-doctor).
