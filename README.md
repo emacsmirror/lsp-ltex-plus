@@ -751,29 +751,21 @@ is still outstanding.
 **Symptom:** No diagnostics ever appear for a buffer that should be checked. The server's stderr buffer (`*ltex-ls-plus stderr*`) contains a line of the form:
 
 ```
-'fr-FR' is not a recognized language. Leaving LanguageTool uninitialized, checking disabled.
+'nb' is not a recognized language. Leaving LanguageTool uninitialized, checking disabled.
 ```
 
 The server process stays up, but grammar checking is disabled for that language until the setting is fixed and the server is restarted.
 
-**Cause:** The local server accepts only the exact codes listed on the [LTeX+ supported languages page](https://ltex-plus.github.io/ltex-plus/supported-languages.html), and several languages have no regional variants there. For example:
+**Cause:** The local server accepts only the codes listed on the [LTeX+ supported languages page](https://ltex-plus.github.io/ltex-plus/supported-languages.html). A code marked there "(only on api.languagetoolplus.com)" — Norwegian, `nb` — is recognised by LanguageTool's hosted API alone; the bundled checker and a self-hosted LanguageTool server reject it. A configuration that works against `https://api.languagetoolplus.com` can therefore stop working after a switch to the local backend, with only the stderr line above to signal what happened.
 
-- French is only `"fr"` — `"fr-FR"` is **not** accepted.
-- Italian is only `"it"`, Spanish only `"es"` (plus `"es-AR"`), Dutch only `"nl"` (plus `"nl-BE"`).
-- German has `"de"`, `"de-AT"`, `"de-CH"`, `"de-DE"`.
-- English has `"en"`, `"en-AU"`, `"en-CA"`, `"en-GB"`, `"en-NZ"`, `"en-US"`, `"en-ZA"`.
-- Portuguese has `"pt"`, `"pt-AO"`, `"pt-BR"`, `"pt-MZ"`, `"pt-PT"`.
+**Codes from an older configuration.** ltex-ls-plus before 18.7 rejected `fr-FR`, `it-IT`, `es-ES`, `nl-NL`, `sv-SE` and `fa-IR`, and the bare codes `fr`, `it`, `es`, `nl`, `sv` and `fa` were the ones to use. This package requires 18.7.0 or newer, where the full codes work. The bare codes are still accepted for backward compatibility, but the supported-languages page no longer lists them and says they should not be used in new configurations. Use a specific variant like `"en-US"` or `"de-DE"` instead of the generic language code like `"en"` or `"de"` to obtain spelling corrections in addition to grammar corrections.
 
-The **remote LanguageTool server** (when `lsp-ltex-plus-lt-server-uri` points at `https://api.languagetoolplus.com`) is more permissive and accepts codes such as `"fr-FR"` that the local server rejects. A configuration that works against the remote service can therefore stop working after a switch to the local backend — with only the stderr line above to signal what happened.
-
-**A second subtlety — bare code vs. regional variant.** Where a language is listed **both** with a bare code and one or more regional variants (English, German, Portuguese, Dutch, Catalan), the bare code (`en`, `de`, `pt`, `nl`, `ca-ES`) enables LanguageTool's grammar rules but **no spell-check dictionary** — dictionaries are variant-specific. Pick the variant matching your text (`en-US`, `de-DE`, `pt-BR`, …) to get both grammar *and* spelling. For languages listed only as a bare code (French `"fr"`, Italian `"it"`, Swedish `"sv"`, …), that code already includes the single dictionary LanguageTool ships for that language — there is nothing more specific to choose.
-
-**Fix:** Check `lsp-ltex-plus-language` against the official list and pick a code that appears there verbatim, then `M-x lsp-ltex-plus-restart-server`:
+**Fix:** Pick a code that appears on the supported-languages page verbatim — `M-x lsp-ltex-plus-change-language` offers exactly those, by name — then `M-x lsp-ltex-plus-restart-server`:
 
 ```elisp
 (use-package lsp-ltex-plus
   :custom
-  (lsp-ltex-plus-language "fr"))  ; NOT "fr-FR" — French has no regional variants
+  (lsp-ltex-plus-language "fr-FR"))
 ```
 
 ### Server Crashes or Memory Issues
