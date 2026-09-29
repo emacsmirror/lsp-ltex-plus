@@ -30,7 +30,7 @@
 (defconst lsp-ltex-plus-doctor-buffer-name "*lsp-ltex-plus doctor*"
   "Name of the buffer `lsp-ltex-plus-doctor' reports in.")
 
-(defcustom lsp-ltex-plus-doctor-samples
+(defconst lsp-ltex-plus-doctor--samples
   '(("en-US" "English"
      "Are you tired of silly spellling mistakes in you're notes? Find \
 them here, not in the commit message that outlives the code, or the \
@@ -62,18 +62,13 @@ One space after a full stop, not two: French and German flag a repeated
 space, and a finding nobody put there on purpose makes the count beside
 the heading disagree with the mistakes a reader can see.
 
-The first section is the language you are configured for, when a sample
-matches it; the others follow in this order.  Each new language costs
-the server a model load, about ten seconds the first time."
-  :type '(repeat (list (string :tag "Language")
-                       (string :tag "Label")
-                       (string :tag "Sample text")))
-  :group 'lsp-ltex-plus)
+The sections follow in this order.  Each new language costs the server
+a model load, about ten seconds the first time.")
 
 (defconst lsp-ltex-plus-doctor-fill-column 72
   "Column the report is written to, and filled at.
 The prose carries its own line breaks at this width; the samples, which
-come from a setting as one long string, are filled to it.  The buffer
+are one long string each, are filled to it.  The buffer
 is given it as `fill-column\=', so that a paragraph the reader refills
 after an edit keeps the width of the page around it.")
 
@@ -627,29 +622,6 @@ nil position, in a backtrace naming nothing of ours."
       (delete-overlay overlay)))
   (setq lsp-ltex-plus-doctor--overall nil))
 
-(defun lsp-ltex-plus-doctor--ordered-samples ()
-  "Return `lsp-ltex-plus-doctor-samples\=', the configured language first.
-A sample for exactly `lsp-ltex-plus-language\=' leads; failing that, one
-for the same language in another variant does, and it is checked under
-the configured code rather than its own -- the text is the same
-language, and what the user wants to see working is their setting.
-With no sample for it at all, the shipped order is kept and the report
-says so."
-  (let* ((configured lsp-ltex-plus-language)
-         (family (car (split-string configured "-")))
-         (match (or (seq-find (lambda (sample) (equal (nth 0 sample) configured))
-                              lsp-ltex-plus-doctor-samples)
-                    (seq-find (lambda (sample)
-                                (equal (car (split-string (nth 0 sample) "-"))
-                                       family))
-                              lsp-ltex-plus-doctor-samples))))
-    (if (not match)
-        lsp-ltex-plus-doctor-samples
-      (cons (list configured
-                  (format "%s (%s, your language)" (nth 1 match) configured)
-                  (nth 2 match))
-            (remq match lsp-ltex-plus-doctor-samples)))))
-
 (defun lsp-ltex-plus-doctor--insert-sample (sample first)
   "Insert SAMPLE as a checked section and return its plist.
 FIRST says this is the first one, which has to switch checking back on
@@ -829,11 +801,9 @@ section per sample, each switching the language for what follows it."
         ;; take back: a reader who undoes a change of their own in an
         ;; example would otherwise watch the page come apart instead.
         (buffer-undo-list t)
-        report-end
-        samples)
+        report-end)
     (lsp-ltex-plus-doctor--project-settings)
     (lsp-ltex-plus-doctor--display-settings)
-    (setq samples (lsp-ltex-plus-doctor--ordered-samples))
     (lsp-ltex-plus-doctor--cancel-timer)
     (lsp-ltex-plus-doctor--delete-overlays)
     (setq lsp-ltex-plus-doctor--sections nil)
@@ -866,7 +836,7 @@ advanced-usage.html#magic-comments][magic comment]]: it sets the language for th
     (setq lsp-ltex-plus-doctor--started (float-time))
     (setq report-end (point-marker))
     (let ((first t))
-      (dolist (sample samples)
+      (dolist (sample lsp-ltex-plus-doctor--samples)
         (push (lsp-ltex-plus-doctor--insert-sample sample first)
               lsp-ltex-plus-doctor--sections)
         (setq first nil)))

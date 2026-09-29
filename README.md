@@ -663,7 +663,7 @@ Below the report the doctor checks itself, under an `* Examples` heading. Three 
 
 ```org
 # LTeX: enabled=true language=en-US dictionary+=LTeX
-** English (en-US, your language)
+** English
   Are you tired of silly spellling mistakes in you're notes? Find them
   here, not in the commit message that outlives the code, or the email
   you just sent to fourty people.
@@ -694,9 +694,9 @@ The line under each paragraph is the verdict for that paragraph, coloured like a
 
 Keys in the doctor buffer: `g` writes the report again, `r` restarts the server, `v` shows or hides the setting behind each value, `q` buries the buffer. Each value names its setting — `Idle delay :: 0.5 s (lsp-ltex-plus-idle-delay)` — but the name is hidden until you press `v`, so the report reads as answers rather than as variables.
 
-Run it inside a project and the report is that project's: the doctor applies the directory-local settings of the directory it was called from, so a `.dir-locals.el` naming another language is both what the report shows and what the samples are checked with.
+Run it inside a project and the report is that project's: the doctor applies the directory-local settings of the directory it was called from, so a `.dir-locals.el` naming another language is what the report shows.
 
-**The report is read-only; the examples are not.** Those single letters are the report's keys, and in the examples they type themselves, so the samples stay editable: break them further, write your own sentence, and watch what comes back. `C-c "` opens the suggestions menu on the mistake at point and applies a replacement there — which makes this buffer the place to learn the menu before using it on your own writing. To check a fourth language, add an entry to `lsp-ltex-plus-doctor-samples`.
+**The report is read-only; the examples are not.** Those single letters are the report's keys, and in the examples they type themselves, so the samples stay editable: break them further, write your own sentence, and watch what comes back. `C-c "` opens the suggestions menu on the mistake at point and applies a replacement there — which makes this buffer the place to learn the menu before using it on your own writing.
 
 ### Server Not Found
 

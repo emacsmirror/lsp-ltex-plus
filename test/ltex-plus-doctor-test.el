@@ -89,27 +89,6 @@ flag the package's own name and teach the user nothing."
       (should (search-forward (format "language=%s" (plist-get section :language))
                               nil t)))))
 
-(ert-deftest ltex-plus-doctor-test-the-configured-language-comes-first ()
-  "The language the user is configured for leads, and says so.
-Its model is the one already loaded, so it is the section that can
-answer first; and it is the one the user actually wants to see work."
-  (let ((lsp-ltex-plus-language "de-DE"))
-    (ltex-plus-doctor-test--with-report
-      (let ((first (car lsp-ltex-plus-doctor--sections)))
-        (should (equal (plist-get first :language) "de-DE"))
-        (should (string-match-p "your language" (plist-get first :label))))))
-  ;; A variant of the same language is close enough to lead, and is
-  ;; checked under the code the user set rather than the sample's.
-  (let ((lsp-ltex-plus-language "en-GB"))
-    (ltex-plus-doctor-test--with-report
-      (should (equal (plist-get (car lsp-ltex-plus-doctor--sections) :language)
-                     "en-GB"))))
-  ;; With no sample for it, the shipped order stands.
-  (let ((lsp-ltex-plus-language "nl-NL"))
-    (ltex-plus-doctor-test--with-report
-      (should (equal (plist-get (car lsp-ltex-plus-doctor--sections) :language)
-                     (car (car lsp-ltex-plus-doctor-samples)))))))
-
 ;;;; -- Reporting what came back ------------------------------------------------
 
 (ert-deftest ltex-plus-doctor-test-a-finding-counts-for-its-own-section ()
@@ -123,7 +102,7 @@ finding in the buffer."
           (list (ltex-plus-doctor-test--diagnostic-on "spellling")
                 (ltex-plus-doctor-test--diagnostic-on "Rechtschreibfelern")))
     (lsp-ltex-plus-doctor--on-diagnostics (current-buffer))
-    (should (equal (ltex-plus-doctor-test--status "English (en-US, your language)")
+    (should (equal (ltex-plus-doctor-test--status "English")
                    "\n  Success: spelling mistakes were detected in this \
 paragraph.\n"))
     (should (string-match-p "Success" (ltex-plus-doctor-test--status "German")))
@@ -172,7 +151,7 @@ the server."
              (substring-no-properties
               (overlay-get lsp-ltex-plus-doctor--overall 'after-string))))
     (should (string-match-p "Success" (ltex-plus-doctor-test--status
-                                      "English (en-US, your language)")))))
+                                      "English")))))
 
 (ert-deftest ltex-plus-doctor-test-a-refresh-leaves-other-overlays-alone ()
   "Writing the report again deletes the doctor's overlays and no others.
@@ -322,8 +301,8 @@ the checker on the samples."
   "Called inside a project, the doctor reports that project's settings.
 The buffer visits no file, so Emacs applies no directory-local values
 to it by itself -- but a reader who runs the doctor inside a project is
-asking about that project, and the samples are then checked the way the
-project's own buffers are."
+asking about that project, and the report then shows the settings the
+project's own buffers are checked with."
   (let* ((directory (file-name-as-directory (make-temp-file "ltex-doctor-" t)))
          (buffer (generate-new-buffer "*ltex-plus-doctor-project*"))
          (enable-local-variables :all))
@@ -336,11 +315,6 @@ project's own buffers are."
             (lsp-ltex-plus-doctor-mode)
             (lsp-ltex-plus-doctor--fill)
             (should (equal lsp-ltex-plus-language "de-DE"))
-            ;; And the sample for that language leads, as it does for a
-            ;; language set globally.
-            (should (equal (plist-get (car lsp-ltex-plus-doctor--sections)
-                                      :language)
-                           "de-DE"))
             ;; Called again from a directory with no settings of its
             ;; own, the report is about that directory: the buffer is
             ;; reused, so the values of the last one have to go.
