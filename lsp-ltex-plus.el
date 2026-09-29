@@ -135,6 +135,30 @@ starts, such as the executable or the Java to run it with; those need
 
 ;;;; -- Language ---------------------------------------------------------------
 
+(defcustom lsp-ltex-plus-change-language-functions nil
+  "Functions run after \\[lsp-ltex-plus-change-language] changed the language.
+Each is called with two arguments, LANGUAGE and GLOBAL, in the buffer
+where the command was run.  LANGUAGE is the code chosen, as the list of
+supported languages spells it; GLOBAL is non-nil when the global value
+was set.  They run after the variable is set and the server is told,
+so a function that signals an error leaves the change in place.
+
+For example, to switch the input method with the language:
+
+  (add-hook \='lsp-ltex-plus-change-language-functions
+            (lambda (language _global)
+              (set-input-method (pcase language
+                                  (\"de-DE\" \"german-postfix\")
+                                  (\"fr-FR\" \"french-postfix\")))))
+
+The hook runs only when the language is changed with
+`lsp-ltex-plus-change-language'.  It does not run for `setq',
+`.dir-locals.el' or a magic comment: a magic comment is read by the
+server, which does not tell the client that the language changed.  For
+`.dir-locals.el', use `hack-local-variables-hook'."
+  :type 'hook
+  :group 'lsp-ltex-plus)
+
 (defvar lsp-ltex-plus--language-history nil
   "Minibuffer history of `lsp-ltex-plus-change-language'.")
 
@@ -226,7 +250,8 @@ document, such as `<!-- LTeX: language=de-DE -->' in Markdown or
 `% LTeX: language=de-DE' in LaTeX, overrides it from that line to the
 end of the document; a later `language=#' restores this setting.
 
-The menu offers the languages in `lsp-ltex-plus-offered-languages'."
+The menu offers the languages in `lsp-ltex-plus-offered-languages'.
+Afterwards the command runs `lsp-ltex-plus-change-language-functions'."
   (interactive
    (let ((global current-prefix-arg))
      (list (lsp-ltex-plus--read-language
@@ -244,7 +269,10 @@ The menu offers the languages in `lsp-ltex-plus-offered-languages'."
                     (format " globally; this buffer keeps its own, %s"
                             lsp-ltex-plus-language))
                    (t " globally"))
-             (if running "" "; no server is running"))))
+             (if running "" "; no server is running")))
+  (run-hook-with-args 'lsp-ltex-plus-change-language-functions
+                      (or (car (lsp-ltex-plus--language-entry language)) language)
+                      global))
 
 ;;;; -- Key binding ------------------------------------------------------------
 

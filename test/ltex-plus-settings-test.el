@@ -433,6 +433,33 @@ keeps the global one."
     (with-temp-buffer
       (should (equal lsp-ltex-plus-language "fr-FR")))))
 
+(ert-deftest ltex-plus-settings-test-the-hook-runs-in-the-buffer-with-the-choice ()
+  "The hook gets the table's spelling and GLOBAL, in the buffer it was run in."
+  (let ((lsp-ltex-plus-language "en-US")
+        (lsp-ltex-plus--connection nil)
+        (lsp-ltex-plus-change-language-functions nil)
+        (calls nil))
+    (add-hook 'lsp-ltex-plus-change-language-functions
+              (lambda (language global)
+                (push (list language global (current-buffer)) calls)))
+    (with-temp-buffer
+      (let ((inhibit-message t))
+        (lsp-ltex-plus-change-language "de-ch")
+        (lsp-ltex-plus-change-language "fr-FR" t))
+      (should (equal calls `(("fr-FR" t ,(current-buffer))
+                             ("de-CH" nil ,(current-buffer))))))))
+
+(ert-deftest ltex-plus-settings-test-a-failing-hook-leaves-the-change-in-place ()
+  "The hook runs after the change, so its error does not undo it."
+  (let ((lsp-ltex-plus-language "en-US")
+        (lsp-ltex-plus--connection nil)
+        (lsp-ltex-plus-change-language-functions
+         (list (lambda (_language _global) (error "Broken hook")))))
+    (with-temp-buffer
+      (let ((inhibit-message t))
+        (should-error (lsp-ltex-plus-change-language "it-IT")))
+      (should (equal lsp-ltex-plus-language "it-IT")))))
+
 (ert-deftest ltex-plus-settings-test-the-menu-marks-the-current-language ()
   "The buffer's language is annotated \"(current)\", and none is the default."
   (let* ((candidates (lsp-ltex-plus--language-candidates))
