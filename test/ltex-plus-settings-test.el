@@ -319,6 +319,47 @@ A `setq' of an unlisted code still reaches the server; see
       (should (widget-apply widget :match (car language))))
     (should-not (widget-apply widget :match "en"))))
 
+(ert-deftest ltex-plus-settings-test-the-offered-languages-come-in-their-order ()
+  "A list of codes offers those languages in its order, the current one after."
+  (let ((lsp-ltex-plus-offered-languages '("it-IT" "de-DE" "en-GB"))
+        (lsp-ltex-plus-language "en-US"))
+    (should (equal (mapcar #'cdr (lsp-ltex-plus--language-candidates))
+                   '("it-IT" "de-DE" "en-GB" "en-US"))))
+  (let ((lsp-ltex-plus-offered-languages '("it-IT" "de-DE"))
+        (lsp-ltex-plus-language "de-DE"))
+    (should (equal (mapcar #'cdr (lsp-ltex-plus--language-candidates))
+                   '("it-IT" "de-DE")))))
+
+(ert-deftest ltex-plus-settings-test-an-unknown-offered-code-is-warned-about-once ()
+  "A code the table does not hold is left out, with one warning per value."
+  (let ((lsp-ltex-plus-offered-languages '("en-us" "de-DE"))
+        (lsp-ltex-plus-language "de-DE")
+        (lsp-ltex-plus--warned-offered-languages nil)
+        (warnings nil))
+    (cl-letf (((symbol-function 'display-warning)
+               (lambda (_type message &rest _) (push message warnings))))
+      (should (equal (mapcar #'cdr (lsp-ltex-plus--language-candidates)) '("de-DE")))
+      (lsp-ltex-plus--language-candidates)
+      (should (= 1 (length warnings)))
+      (should (string-match-p "\"en-us\"" (car warnings)))
+      (setq lsp-ltex-plus-offered-languages '("de-DE" "xx"))
+      (lsp-ltex-plus--language-candidates)
+      (should (= 2 (length warnings))))))
+
+(ert-deftest ltex-plus-settings-test-no-supported-offered-language-is-an-error ()
+  "A list with nothing the menu could offer says so instead of an empty menu."
+  (let ((lsp-ltex-plus-offered-languages '("xx"))
+        (lsp-ltex-plus-language "yy")
+        (lsp-ltex-plus--warned-offered-languages '("xx")))
+    (should-error (lsp-ltex-plus--language-candidates) :type 'user-error)))
+
+(ert-deftest ltex-plus-settings-test-customize-ticks-the-offered-languages ()
+  "The Customize type of the offered languages is a set of the listed codes."
+  (let ((widget (widget-convert (get 'lsp-ltex-plus-offered-languages 'custom-type))))
+    (should (widget-apply widget :match nil))
+    (should (widget-apply widget :match '("en-US" "de-DE")))
+    (should-not (widget-apply widget :match '("en")))))
+
 (ert-deftest ltex-plus-settings-test-the-language-changes-in-this-buffer-only ()
   "Without a prefix the value is set in the current buffer, and the server told.
 The next pull from that buffer answers the new language; another buffer

@@ -138,20 +138,53 @@ starts, such as the executable or the Java to run it with; those need
 (defvar lsp-ltex-plus--language-history nil
   "Minibuffer history of `lsp-ltex-plus-change-language'.")
 
+(defvar lsp-ltex-plus--warned-offered-languages nil
+  "The unknown codes of `lsp-ltex-plus-offered-languages' last warned about.
+Kept so that the warning is shown once for each wrong value, not every
+time the menu opens.")
+
+(defun lsp-ltex-plus--offered-languages ()
+  "Return the entries of `lsp-ltex-plus--languages' the menu offers.
+Every entry when `lsp-ltex-plus-offered-languages' is nil; otherwise
+the entries it names, in its order, followed by the buffer's current
+language if the list does not name it.  A code the table does not hold
+is left out, logged, and warned about once for each wrong value."
+  (if (null lsp-ltex-plus-offered-languages)
+      lsp-ltex-plus--languages
+    (let ((unknown (seq-remove (lambda (code) (assoc code lsp-ltex-plus--languages))
+                               lsp-ltex-plus-offered-languages)))
+      (when unknown
+        (lsp-ltex-plus--log "Offered languages not supported, left out: %S" unknown)
+        (unless (equal unknown lsp-ltex-plus--warned-offered-languages)
+          (setq lsp-ltex-plus--warned-offered-languages unknown)
+          (display-warning 'lsp-ltex-plus
+                           (format (concat "`lsp-ltex-plus-offered-languages' names codes"
+                                           " LTeX+ does not support: %s; the menu leaves"
+                                           " them out.  The supported codes are listed at"
+                                           " https://ltex-plus.github.io/ltex-plus/"
+                                           "supported-languages.html")
+                                   (mapconcat (lambda (code) (format "%S" code))
+                                              unknown ", ")))))
+      (delq nil (mapcar (lambda (code) (assoc code lsp-ltex-plus--languages))
+                        (delete-dups (append lsp-ltex-plus-offered-languages
+                                             (list lsp-ltex-plus-language))))))))
+
 (defun lsp-ltex-plus--language-candidates ()
   "Return the menu of `lsp-ltex-plus-change-language' as (LABEL . CODE).
-One entry per language in `lsp-ltex-plus--languages': the name in a
-column, then the code, then the note if there is one, so that typing
-either the name or the code completes."
-  (let ((width (apply #'max (mapcar (lambda (language) (string-width (cadr language)))
-                                    lsp-ltex-plus--languages))))
+One entry per language in `lsp-ltex-plus--offered-languages': the name
+in a column, then the code, then the note if there is one, so that
+typing either the name or the code completes."
+  (let* ((languages (or (lsp-ltex-plus--offered-languages)
+                        (user-error "`lsp-ltex-plus-offered-languages' names no supported language")))
+         (width (apply #'max (mapcar (lambda (language) (string-width (cadr language)))
+                                     languages))))
     (mapcar (pcase-lambda (`(,code ,name ,note))
               (cons (concat name
                             (make-string (- (+ width 2) (string-width name)) ?\s)
                             code
                             (and note (format "  (%s)" note)))
                     code))
-            lsp-ltex-plus--languages)))
+            languages)))
 
 (defun lsp-ltex-plus--read-language (prompt)
   "Ask for a language with PROMPT, and return its code.
@@ -183,8 +216,14 @@ without a value of its own follows it.
 
 The running server is told the configuration changed, so it fetches its
 settings again and checks the document in the new language, with no
-server restart.  A magic comment in the document (such as
-`% LTeX: language=de-DE' in LaTeX) still overrides the setting."
+server restart.
+
+The value applies to the whole buffer.  A magic comment in the
+document, such as `<!-- LTeX: language=de-DE -->' in Markdown or
+`% LTeX: language=de-DE' in LaTeX, overrides it from that line to the
+end of the document; a later `language=#' restores this setting.
+
+The menu offers the languages in `lsp-ltex-plus-offered-languages'."
   (interactive
    (let ((global current-prefix-arg))
      (list (lsp-ltex-plus--read-language

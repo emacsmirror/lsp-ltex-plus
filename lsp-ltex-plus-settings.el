@@ -273,6 +273,15 @@ the legacy bare codes (\"en\", \"de\"), so a setting is never checked
 against this list; it only fills the menu of
 `lsp-ltex-plus-change-language' and the choices Customize offers.")
 
+(defun lsp-ltex-plus--language-const (language)
+  "Return the Customize choice for LANGUAGE, an entry of the languages table.
+A `const' widget whose tag gives the name, then the code and any note."
+  (pcase-let ((`(,code ,name ,note) language))
+    `(const :tag ,(if note
+                      (format "%s (%s, %s)" name code note)
+                    (format "%s (%s)" name code))
+            ,code)))
+
 (defcustom lsp-ltex-plus-language "en-US"
   "The language (e.g., \"en-US\") LanguageTool should check against.
 If possible, use a specific variant like \"en-US\" or \"de-DE\" instead of the
@@ -283,15 +292,31 @@ When using the language code \"auto\", LTeX+ will try to detect the language of
 the document.  This is not recommended, as only generic languages like \"en\" or
 \"de\" will be detected and thus no spelling errors might be reported.
 
+The value applies to the whole buffer.  A magic comment in the
+document, such as `<!-- LTeX: language=de-DE -->' in Markdown or
+`% LTeX: language=de-DE' in LaTeX, overrides it from that line to the
+end of the document; a later `language=#' restores this setting.
+
 To change it for one buffer, or for the whole session, from a menu of
 the supported languages, use \\[lsp-ltex-plus-change-language]."
-  :type `(choice ,@(mapcar (pcase-lambda (`(,code ,name ,note))
-                             `(const :tag ,(if note
-                                               (format "%s (%s, %s)" name code note)
-                                             (format "%s (%s)" name code))
-                                     ,code))
-                           lsp-ltex-plus--languages))
+  :type `(choice ,@(mapcar #'lsp-ltex-plus--language-const lsp-ltex-plus--languages))
   :safe #'stringp
+  :group 'lsp-ltex-plus)
+
+(defcustom lsp-ltex-plus-offered-languages nil
+  "The languages `lsp-ltex-plus-change-language' offers, as codes.
+Nil offers every supported language.  A list, such as
+\='(\"en-US\" \"de-DE\"), offers those languages, in the order given.
+The buffer's current language is offered too, even when the list does
+not name it, so that the menu can mark it.  A code LTeX+ does not
+list is left out of the menu, with a warning.
+
+This list decides only what the menu offers.  A magic comment in the
+document, such as `<!-- LTeX: language=de-DE -->' in Markdown or
+`% LTeX: language=de-DE' in LaTeX, overrides `lsp-ltex-plus-language'
+from that line to the end of the document, whether or not this list
+names the language; a later `language=#' restores the buffer's value."
+  :type `(set ,@(mapcar #'lsp-ltex-plus--language-const lsp-ltex-plus--languages))
   :group 'lsp-ltex-plus)
 
 (defun lsp-ltex-plus--symbol-keyed-alist-p (value)
