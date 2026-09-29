@@ -334,6 +334,11 @@ For a more robust setup using `use-package` and `straight.el`, you can use the f
       (setq lsp-ltex-plus-lt-username user))
     (when (and key (or (null lsp-ltex-plus-lt-api-key) (string-empty-p lsp-ltex-plus-lt-api-key)))
       (setq lsp-ltex-plus-lt-api-key key))))
+
+;; Uncomment to keep the history of M-x lsp-ltex-plus-change-language
+;; across sessions.  savehist-mode saves every minibuffer history, not
+;; only this one; leave it out if your configuration already turns it on.
+;; (savehist-mode 1)
 ```
 
 ### Key Settings
