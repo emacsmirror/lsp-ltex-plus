@@ -310,12 +310,14 @@ edited file reaches the next check."
         (should (string-suffix-p (concat " " code (and note (format "  (%s)" note)))
                                  (car entry)))))))
 
-(ert-deftest ltex-plus-settings-test-customize-offers-the-languages-and-any-code ()
-  "The Customize type matches every listed code, and a code it does not list."
+(ert-deftest ltex-plus-settings-test-customize-offers-only-the-languages ()
+  "The Customize type matches every listed code, and no code it does not list.
+A `setq' of an unlisted code still reaches the server; see
+`ltex-plus-scope-test-sections-are-read-the-way-the-protocol-spells-them'."
   (let ((widget (widget-convert (get 'lsp-ltex-plus-language 'custom-type))))
     (dolist (language lsp-ltex-plus--languages)
       (should (widget-apply widget :match (car language))))
-    (should (widget-apply widget :match "en"))))
+    (should-not (widget-apply widget :match "en"))))
 
 (ert-deftest ltex-plus-settings-test-the-language-changes-in-this-buffer-only ()
   "Without a prefix the value is set in the current buffer, and the server told.

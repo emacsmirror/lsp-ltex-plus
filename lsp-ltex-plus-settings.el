@@ -290,8 +290,7 @@ the supported languages, use \\[lsp-ltex-plus-change-language]."
                                                (format "%s (%s, %s)" name code note)
                                              (format "%s (%s)" name code))
                                      ,code))
-                           lsp-ltex-plus--languages)
-                 (string :tag "Other code"))
+                           lsp-ltex-plus--languages))
   :safe #'stringp
   :group 'lsp-ltex-plus)
 
