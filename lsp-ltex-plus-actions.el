@@ -337,14 +337,19 @@ of `lsp-ltex-plus--action-order'."
     (lsp-ltex-plus--order-actions
      (lsp-ltex-plus--expand-suggestions (lsp-ltex-plus--request-code-actions beg end)))))
 
-(defun lsp-ltex-plus--completion-table (labels)
+(defun lsp-ltex-plus--completion-table (labels &optional category annotate)
   "Return a completion table offering LABELS in the order given.
 Its metadata tells the completion framework not to sort them, which
 the default `completing-read' and vertico alike would otherwise do,
-alphabetically or by history."
+alphabetically or by history.  CATEGORY is the completion category,
+`lsp-ltex-plus-action' by default.  ANNOTATE, when non-nil, is the
+table's annotation function: called with a label, it returns the text
+shown after it, which completion does not match and history does not
+keep."
   (lambda (string predicate action)
     (if (eq action 'metadata)
-        '(metadata (category . lsp-ltex-plus-action)
+        `(metadata (category . ,(or category 'lsp-ltex-plus-action))
+                   ,@(and annotate `((annotation-function . ,annotate)))
                    (display-sort-function . identity)
                    (cycle-sort-function . identity))
       (complete-with-action action labels string predicate))))

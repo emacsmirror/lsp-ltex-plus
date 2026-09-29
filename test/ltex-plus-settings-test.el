@@ -297,6 +297,88 @@ edited file reaches the next check."
     (ltex-plus-fake-wait-for
      (lambda () (= 2 (length (ltex-plus-fake-received 'workspace/didChangeConfiguration)))))))
 
+;;;; -- Changing the language ---------------------------------------------------
+
+(ert-deftest ltex-plus-settings-test-every-language-is-offered-by-name-and-code ()
+  "Each menu entry shows name, code and note, and maps back to the code."
+  (let ((candidates (lsp-ltex-plus--language-candidates)))
+    (should (= (length candidates) (length lsp-ltex-plus--languages)))
+    (pcase-dolist (`(,code ,name ,note) lsp-ltex-plus--languages)
+      (let ((entry (rassoc code candidates)))
+        (should entry)
+        (should (string-prefix-p name (car entry)))
+        (should (string-suffix-p (concat " " code (and note (format "  (%s)" note)))
+                                 (car entry)))))))
+
+(ert-deftest ltex-plus-settings-test-customize-offers-the-languages-and-any-code ()
+  "The Customize type matches every listed code, and a code it does not list."
+  (let ((widget (widget-convert (get 'lsp-ltex-plus-language 'custom-type))))
+    (dolist (language lsp-ltex-plus--languages)
+      (should (widget-apply widget :match (car language))))
+    (should (widget-apply widget :match "en"))))
+
+(ert-deftest ltex-plus-settings-test-the-language-changes-in-this-buffer-only ()
+  "Without a prefix the value is set in the current buffer, and the server told.
+The next pull from that buffer answers the new language; another buffer
+keeps the global one."
+  (ltex-plus-fake-with-connection
+    (ltex-plus-fake-ready-connection)
+    (ltex-plus-fake-wait-for
+     (lambda () (ltex-plus-fake-received 'workspace/didChangeConfiguration)))
+    (let ((global (default-value 'lsp-ltex-plus-language)))
+      (with-temp-buffer
+        (let ((inhibit-message t))
+          (lsp-ltex-plus-change-language "de-CH"))
+        (should (local-variable-p 'lsp-ltex-plus-language))
+        (should (equal (lsp-ltex-plus--configuration-section "ltex.language") "de-CH"))
+        (should (equal (default-value 'lsp-ltex-plus-language) global)))
+      (with-temp-buffer
+        (should (equal (lsp-ltex-plus--configuration-section "ltex.language") global))))
+    (ltex-plus-fake-wait-for
+     (lambda () (= 2 (length (ltex-plus-fake-received 'workspace/didChangeConfiguration)))))))
+
+(ert-deftest ltex-plus-settings-test-the-language-changes-globally-with-a-prefix ()
+  "With a prefix the global value changes; a buffer with its own value keeps it."
+  (let ((lsp-ltex-plus-language "en-US")
+        (lsp-ltex-plus--connection nil))
+    (with-temp-buffer
+      (setq-local lsp-ltex-plus-language "it-IT")
+      (let ((inhibit-message t))
+        (lsp-ltex-plus-change-language "fr-FR" t))
+      (should (equal lsp-ltex-plus-language "it-IT"))
+      (should (equal (default-value 'lsp-ltex-plus-language) "fr-FR")))
+    (with-temp-buffer
+      (should (equal lsp-ltex-plus-language "fr-FR")))))
+
+(ert-deftest ltex-plus-settings-test-the-menu-marks-the-current-language ()
+  "The buffer's language is annotated \"(current)\", and none is the default."
+  (let* ((candidates (lsp-ltex-plus--language-candidates))
+         (current (car (rassoc "de-CH" candidates)))
+         (other (car (rassoc "en-US" candidates)))
+         annotate default)
+    (with-temp-buffer
+      (setq-local lsp-ltex-plus-language "de-CH")
+      (cl-letf (((symbol-function 'completing-read)
+                 (lambda (_prompt table &rest args)
+                   (setq annotate (completion-metadata-get
+                                   (completion-metadata "" table nil)
+                                   'annotation-function)
+                         default (nth 5 args))
+                   current)))
+        (should (equal (lsp-ltex-plus--read-language "? ") "de-CH"))))
+    (should (equal (funcall annotate current) "  (current)"))
+    (should-not (funcall annotate other))
+    (should-not default)))
+
+(ert-deftest ltex-plus-settings-test-the-menu-returns-the-code-or-what-was-typed ()
+  "Picking an entry gives its code; a code typed and confirmed is kept as typed."
+  (let ((candidates (lsp-ltex-plus--language-candidates)))
+    (cl-letf (((symbol-function 'completing-read)
+               (lambda (&rest _) (car (rassoc "pt-BR" candidates)))))
+      (should (equal (lsp-ltex-plus--read-language "? ") "pt-BR")))
+    (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "en")))
+      (should (equal (lsp-ltex-plus--read-language "? ") "en")))))
+
 (ert-deftest ltex-plus-settings-test-setup-is-idempotent ()
   "Running setup twice leaves the lists as one run left them."
   (ltex-plus-test-reset)

@@ -212,6 +212,67 @@ all others are parsed as Markdown."
   :safe #'booleanp
   :group 'lsp-ltex-plus)
 
+(defconst lsp-ltex-plus--languages
+  '(("auto" "Automatic language detection")
+    ("ar" "Arabic")
+    ("ast-ES" "Asturian")
+    ("be-BY" "Belarusian")
+    ("br-FR" "Breton")
+    ("ca-ES" "Catalan")
+    ("ca-ES-balear" "Catalan (Balearic)")
+    ("ca-ES-valencia" "Catalan (Valencian)")
+    ("zh-CN" "Chinese")
+    ("crh-UA" "Crimean Tatar")
+    ("da-DK" "Danish")
+    ("nl-NL" "Dutch")
+    ("nl-BE" "Dutch (Belgium)")
+    ("en-AU" "English (Australian)")
+    ("en-CA" "English (Canadian)")
+    ("en-GB" "English (GB)")
+    ("en-NZ" "English (New Zealand)")
+    ("en-ZA" "English (South African)")
+    ("en-US" "English (US)")
+    ("eo" "Esperanto")
+    ("fr-FR" "French")
+    ("fr-BE" "French (Belgium)")
+    ("fr-CA" "French (Canada)")
+    ("fr-CH" "French (Switzerland)")
+    ("gl-ES" "Galician")
+    ("de-AT" "German (Austria)")
+    ("de-DE" "German (Germany)")
+    ("de-CH" "German (Swiss)")
+    ("el-GR" "Greek")
+    ("ga-IE" "Irish")
+    ("it-IT" "Italian")
+    ("ja-JP" "Japanese")
+    ("km-KH" "Khmer")
+    ("nb" "Norwegian (Bokmål)" "only on api.languagetoolplus.com")
+    ("fa-IR" "Persian")
+    ("pl-PL" "Polish")
+    ("pt-AO" "Portuguese (Angola preAO)")
+    ("pt-BR" "Portuguese (Brazil)")
+    ("pt-MZ" "Portuguese (Moçambique preAO)")
+    ("pt-PT" "Portuguese (Portugal)")
+    ("ro-RO" "Romanian")
+    ("ru-RU" "Russian")
+    ("de-DE-x-simple-language" "Simple German")
+    ("sk-SK" "Slovak")
+    ("sl-SI" "Slovenian")
+    ("es-ES" "Spanish")
+    ("es-AR" "Spanish (voseo)")
+    ("sv-SE" "Swedish")
+    ("tl-PH" "Tagalog")
+    ("ta-IN" "Tamil")
+    ("uk-UA" "Ukrainian"))
+  "The languages LTeX+ supports, as (CODE NAME [NOTE]), in the order offered.
+Copied from the list of possible values for `ltex.language' at
+https://ltex-plus.github.io/ltex-plus/settings.html#ltexlanguage,
+sorted by name as the supported-languages page sorts them, with
+\"auto\" first.  The server also accepts codes not listed here, such as
+the legacy bare codes (\"en\", \"de\"), so a setting is never checked
+against this list; it only fills the menu of
+`lsp-ltex-plus-change-language' and the choices Customize offers.")
+
 (defcustom lsp-ltex-plus-language "en-US"
   "The language (e.g., \"en-US\") LanguageTool should check against.
 If possible, use a specific variant like \"en-US\" or \"de-DE\" instead of the
@@ -220,8 +281,17 @@ addition to grammar corrections).
 
 When using the language code \"auto\", LTeX+ will try to detect the language of
 the document.  This is not recommended, as only generic languages like \"en\" or
-\"de\" will be detected and thus no spelling errors might be reported."
-  :type 'string
+\"de\" will be detected and thus no spelling errors might be reported.
+
+To change it for one buffer, or for the whole session, from a menu of
+the supported languages, use \\[lsp-ltex-plus-change-language]."
+  :type `(choice ,@(mapcar (pcase-lambda (`(,code ,name ,note))
+                             `(const :tag ,(if note
+                                               (format "%s (%s, %s)" name code note)
+                                             (format "%s (%s)" name code))
+                                     ,code))
+                           lsp-ltex-plus--languages)
+                 (string :tag "Other code"))
   :safe #'stringp
   :group 'lsp-ltex-plus)
 

@@ -133,6 +133,77 @@ starts, such as the executable or the Java to run it with; those need
       (message "[lsp-ltex-plus] Settings reloaded and pushed to the server.")
     (message "[lsp-ltex-plus] Settings reloaded; no server is running.")))
 
+;;;; -- Language ---------------------------------------------------------------
+
+(defvar lsp-ltex-plus--language-history nil
+  "Minibuffer history of `lsp-ltex-plus-change-language'.")
+
+(defun lsp-ltex-plus--language-candidates ()
+  "Return the menu of `lsp-ltex-plus-change-language' as (LABEL . CODE).
+One entry per language in `lsp-ltex-plus--languages': the name in a
+column, then the code, then the note if there is one, so that typing
+either the name or the code completes."
+  (let ((width (apply #'max (mapcar (lambda (language) (string-width (cadr language)))
+                                    lsp-ltex-plus--languages))))
+    (mapcar (pcase-lambda (`(,code ,name ,note))
+              (cons (concat name
+                            (make-string (- (+ width 2) (string-width name)) ?\s)
+                            code
+                            (and note (format "  (%s)" note)))
+                    code))
+            lsp-ltex-plus--languages)))
+
+(defun lsp-ltex-plus--read-language (prompt)
+  "Ask for a language with PROMPT, and return its code.
+The menu is `lsp-ltex-plus--language-candidates', with the value of
+`lsp-ltex-plus-language' in the current buffer marked \"(current)\".
+There is no default: choosing the current language again changes
+nothing, and \\[keyboard-quit] leaves it.  A code not in the menu is
+accepted after confirmation and returned as typed."
+  (let* ((candidates (lsp-ltex-plus--language-candidates))
+         (current (car (rassoc lsp-ltex-plus-language candidates)))
+         (answer (completing-read prompt
+                                  (lsp-ltex-plus--completion-table
+                                   (mapcar #'car candidates) 'lsp-ltex-plus-language
+                                   (lambda (label)
+                                     (and (equal label current) "  (current)")))
+                                  nil 'confirm nil 'lsp-ltex-plus--language-history)))
+    (when (string-empty-p answer)
+      (user-error "No language chosen"))
+    (or (cdr (assoc answer candidates)) answer)))
+
+;;;###autoload
+(defun lsp-ltex-plus-change-language (language &optional global)
+  "Set `lsp-ltex-plus-language' to LANGUAGE in the current buffer.
+Interactively, LANGUAGE is picked from a menu of the languages LTeX+
+supports, listed by name with the code after it; a code not listed
+there is accepted after confirmation.  With a prefix argument (GLOBAL
+non-nil), set the global value instead: every buffer without a value
+of its own follows it.
+
+The running server is told the configuration changed, so it fetches its
+settings again and checks the document in the new language, with no
+server restart.  A magic comment in the document (such as
+`% LTeX: language=de-DE' in LaTeX) still overrides the setting."
+  (interactive
+   (let ((global current-prefix-arg))
+     (list (lsp-ltex-plus--read-language
+            (if global "LTeX+ language (global): " "LTeX+ language (this buffer): "))
+           global)))
+  (if global
+      (setq-default lsp-ltex-plus-language language)
+    (setq-local lsp-ltex-plus-language language))
+  (let ((running (lsp-ltex-plus--live-connection)))
+    (lsp-ltex-plus--push-configuration)
+    (message "[lsp-ltex-plus] Language %s%s%s"
+             language
+             (cond ((not global) " in this buffer")
+                   ((local-variable-p 'lsp-ltex-plus-language)
+                    (format " globally; this buffer keeps its own, %s"
+                            lsp-ltex-plus-language))
+                   (t " globally"))
+             (if running "" "; no server is running"))))
+
 ;;;; -- Key binding ------------------------------------------------------------
 
 ;; One key, for the one command a writer reaches for while typing: the

@@ -358,6 +358,7 @@ Everything else is called by name, since it is needed rarely:
 | Command | What it does |
 | :--- | :--- |
 | `lsp-ltex-plus-add-to-dictionary` | Accepts the word at point into the dictionary without the menu. When both a project and the global dictionary are on offer, it still asks which. Bind it yourself if you want it on a key. |
+| `lsp-ltex-plus-change-language` | Sets `lsp-ltex-plus-language` in this buffer, picked from a menu of the languages LTeX+ supports, and has the server check the buffer again in that language. With `C-u`, sets the global value; a buffer with its own value keeps it. |
 | `lsp-ltex-plus-reload-settings` | Applies a changed setting or a hand-edited word list without restarting anything. |
 | `lsp-ltex-plus-list-dictionary` | Shows the words accepted in this buffer, naming the project file where one applies. |
 | `lsp-ltex-plus-restart-server` | Restarts the server, for a setting it reads only when it starts. |
