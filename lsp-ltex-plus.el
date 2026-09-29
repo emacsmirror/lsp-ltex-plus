@@ -147,11 +147,13 @@ time the menu opens.")
   "Return the entries of `lsp-ltex-plus--languages' the menu offers.
 Every entry when `lsp-ltex-plus-offered-languages' is nil; otherwise
 the entries it names, in its order, followed by the buffer's current
-language if the list does not name it.  A code the table does not hold
-is left out, logged, and warned about once for each wrong value."
+language if the list does not name it.  Codes are matched with case
+ignored, as `lsp-ltex-plus--language-entry' matches them.  A code the
+table does not hold is left out, logged, and warned about once for
+each wrong value."
   (if (null lsp-ltex-plus-offered-languages)
       lsp-ltex-plus--languages
-    (let ((unknown (seq-remove (lambda (code) (assoc code lsp-ltex-plus--languages))
+    (let ((unknown (seq-remove #'lsp-ltex-plus--language-entry
                                lsp-ltex-plus-offered-languages)))
       (when unknown
         (lsp-ltex-plus--log "Offered languages not supported, left out: %S" unknown)
@@ -165,8 +167,8 @@ is left out, logged, and warned about once for each wrong value."
                                            "supported-languages.html")
                                    (mapconcat (lambda (code) (format "%S" code))
                                               unknown ", ")))))
-      (delq nil (mapcar (lambda (code) (assoc code lsp-ltex-plus--languages))
-                        (delete-dups (append lsp-ltex-plus-offered-languages
+      (delete-dups (delq nil (mapcar #'lsp-ltex-plus--language-entry
+                                     (append lsp-ltex-plus-offered-languages
                                              (list lsp-ltex-plus-language))))))))
 
 (defun lsp-ltex-plus--language-candidates ()
@@ -195,7 +197,8 @@ nothing, and \\[keyboard-quit] leaves it.  Only a language in the menu
 is accepted; a code the server also takes, such as the legacy \"fr\"
 or the alias \"no\", is not."
   (let* ((candidates (lsp-ltex-plus--language-candidates))
-         (current (car (rassoc lsp-ltex-plus-language candidates)))
+         (current (car (rassoc (car (lsp-ltex-plus--language-entry lsp-ltex-plus-language))
+                                     candidates)))
          (answer (completing-read prompt
                                   (lsp-ltex-plus--completion-table
                                    (mapcar #'car candidates) 'lsp-ltex-plus-language

@@ -330,9 +330,49 @@ A `setq' of an unlisted code still reaches the server; see
     (should (equal (mapcar #'cdr (lsp-ltex-plus--language-candidates))
                    '("it-IT" "de-DE")))))
 
+(ert-deftest ltex-plus-settings-test-a-listed-language-is-sent-as-the-table-spells-it ()
+  "Case is ignored against the table; the server gets the table's spelling."
+  (should (equal (lsp-ltex-plus--canonical-language "en-us") "en-US"))
+  (should (equal (lsp-ltex-plus--canonical-language "DE-de-X-SIMPLE-LANGUAGE")
+                 "de-DE-x-simple-language"))
+  (with-temp-buffer
+    (setq-local lsp-ltex-plus-language "fr-fr")
+    (should (equal (lsp-ltex-plus--configuration-section "ltex.language") "fr-FR"))))
+
+(ert-deftest ltex-plus-settings-test-an-unlisted-language-is-sent-and-logged-once ()
+  "A code the table does not hold goes to the server unchanged, logged once."
+  (let ((buffer "*lsp-ltex-plus log*")
+        (lsp-ltex-plus-debug t)
+        (lsp-ltex-plus--logged-unlisted-language nil))
+    (when (get-buffer buffer) (kill-buffer buffer))
+    (should (equal (lsp-ltex-plus--canonical-language "fr") "fr"))
+    (should (equal (lsp-ltex-plus--canonical-language "fr") "fr"))
+    (with-current-buffer buffer
+      (should (= 1 (how-many "Language \"fr\" is not in the list" (point-min) (point-max)))))
+    (kill-buffer buffer)))
+
+(ert-deftest ltex-plus-settings-test-offered-and-current-languages-ignore-case ()
+  "The offered list and the current language match the table with case ignored."
+  (let ((lsp-ltex-plus-offered-languages '("en-us" "DE-DE"))
+        (lsp-ltex-plus-language "it-it")
+        (lsp-ltex-plus--warned-offered-languages nil)
+        (annotate nil))
+    (cl-letf (((symbol-function 'display-warning)
+               (lambda (&rest _) (error "No warning expected"))))
+      (should (equal (mapcar #'cdr (lsp-ltex-plus--language-candidates))
+                     '("en-US" "de-DE" "it-IT")))
+      (cl-letf (((symbol-function 'completing-read)
+                 (lambda (_prompt table &rest _)
+                   (setq annotate (completion-metadata-get
+                                   (completion-metadata "" table nil)
+                                   'annotation-function))
+                   (car (rassoc "en-US" (lsp-ltex-plus--language-candidates))))))
+        (lsp-ltex-plus--read-language "? ")))
+    (should (funcall annotate (car (rassoc "it-IT" (lsp-ltex-plus--language-candidates)))))))
+
 (ert-deftest ltex-plus-settings-test-an-unknown-offered-code-is-warned-about-once ()
   "A code the table does not hold is left out, with one warning per value."
-  (let ((lsp-ltex-plus-offered-languages '("en-us" "de-DE"))
+  (let ((lsp-ltex-plus-offered-languages '("en-XX" "de-DE"))
         (lsp-ltex-plus-language "de-DE")
         (lsp-ltex-plus--warned-offered-languages nil)
         (warnings nil))
@@ -341,7 +381,7 @@ A `setq' of an unlisted code still reaches the server; see
       (should (equal (mapcar #'cdr (lsp-ltex-plus--language-candidates)) '("de-DE")))
       (lsp-ltex-plus--language-candidates)
       (should (= 1 (length warnings)))
-      (should (string-match-p "\"en-us\"" (car warnings)))
+      (should (string-match-p "\"en-XX\"" (car warnings)))
       (setq lsp-ltex-plus-offered-languages '("de-DE" "xx"))
       (lsp-ltex-plus--language-candidates)
       (should (= 2 (length warnings))))))

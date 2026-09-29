@@ -292,6 +292,10 @@ When using the language code \"auto\", LTeX+ will try to detect the language of
 the document.  This is not recommended, as only generic languages like \"en\" or
 \"de\" will be detected and thus no spelling errors might be reported.
 
+A value that names a supported language with case ignored is sent to
+the server as the list of supported languages spells it, so \"en-us\"
+is sent as \"en-US\"; any other value is sent unchanged.
+
 The value applies to the whole buffer.  A magic comment in the
 document, such as `<!-- LTeX: language=de-DE -->' in Markdown or
 `% LTeX: language=de-DE' in LaTeX, overrides it from that line to the
@@ -1348,6 +1352,30 @@ folded in on top of the global ones."
         :enabledRules         (lsp-ltex-plus--obj-or-empty (lsp-ltex-plus--effective-plist 'enabled-rules))
         :hiddenFalsePositives (lsp-ltex-plus--obj-or-empty (lsp-ltex-plus--effective-plist 'hidden-false-positives))))
 
+(defun lsp-ltex-plus--language-entry (code)
+  "Return the entry of `lsp-ltex-plus--languages' for CODE, or nil.
+Case is ignored, so \"en-us\" finds the entry of \"en-US\"."
+  (and (stringp code) (assoc-string code lsp-ltex-plus--languages t)))
+
+(defvar lsp-ltex-plus--logged-unlisted-language nil
+  "The last value of `lsp-ltex-plus-language' logged as not listed.
+Kept so that the line is written once for each value, not on every
+configuration request.")
+
+(defun lsp-ltex-plus--canonical-language (code)
+  "Return the language CODE as the server is sent it.
+The code as `lsp-ltex-plus--languages' spells it when CODE names a
+listed language with case ignored, so \"en-us\" is sent as \"en-US\".
+Any other value is sent unchanged, since the server also takes codes
+the table does not list, and logged once for each value."
+  (if-let* ((entry (lsp-ltex-plus--language-entry code)))
+      (car entry)
+    (unless (equal code lsp-ltex-plus--logged-unlisted-language)
+      (setq lsp-ltex-plus--logged-unlisted-language code)
+      (lsp-ltex-plus--log "Language %S is not in the list of supported languages; sent unchanged"
+                          code))
+    code))
+
 (defun lsp-ltex-plus--settings-object ()
   "Return the `ltex' settings object, read in the current buffer.
 The nested object the server expects under the `ltex' section, built
@@ -1374,7 +1402,7 @@ the server would drop them unread."
   ;; as every pull is; the global push, read in none, says plain text,
   ;; which the server never skips and nothing is checked against.
   (list :enabled (vector (lsp-ltex-plus--language-id))
-        :language lsp-ltex-plus-language
+        :language (lsp-ltex-plus--canonical-language lsp-ltex-plus-language)
         :bibtex (list :fields (lsp-ltex-plus--obj-or-empty lsp-ltex-plus-bibtex-fields))
         :latex (list :commands (lsp-ltex-plus--obj-or-empty lsp-ltex-plus-latex-commands)
                      :environments (lsp-ltex-plus--obj-or-empty lsp-ltex-plus-latex-environments))
