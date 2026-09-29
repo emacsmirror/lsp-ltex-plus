@@ -20,9 +20,9 @@
 
 (defconst ltex-plus-project-test--spec
   '((".dir-locals.el"
-     . "((nil . ((lsp-ltex-plus-project-dictionary-file
+     . "((nil . ((lsp-ltex-plus-dictionary-project-file
                   . \".ltex/dictionary.eld\")
-                 (lsp-ltex-plus-project-disabled-rules-file
+                 (lsp-ltex-plus-disabled-rules-project-file
                   . \".ltex/disabled-rules.eld\"))))")
     (".ltex/dictionary.eld"     . "(:en-US [\"Wittgenstein\"])")
     (".ltex/disabled-rules.eld" . "(:en-US [\"PROJECT_RULE\"])")
@@ -71,18 +71,18 @@ rather than as one list happening to be empty."
 (ert-deftest ltex-plus-project-test-setting-reaches-the-buffer ()
   "The project's files are named in its buffers and nowhere else."
   (ltex-plus-project-test--in-project
-    (should (equal (buffer-local-value 'lsp-ltex-plus-project-dictionary-file top)
+    (should (equal (buffer-local-value 'lsp-ltex-plus-dictionary-project-file top)
                    ".ltex/dictionary.eld"))
-    (should-not (buffer-local-value 'lsp-ltex-plus-project-dictionary-file
+    (should-not (buffer-local-value 'lsp-ltex-plus-dictionary-project-file
                                     outside))))
 
 (ert-deftest ltex-plus-project-test-settings-are-independent ()
   "Configuring one list leaves the other three unset.
 A project that brings a dictionary keeps using the global rule lists."
   (ltex-plus-project-test--in-project
-    (should-not (buffer-local-value 'lsp-ltex-plus-project-enabled-rules-file top))
+    (should-not (buffer-local-value 'lsp-ltex-plus-enabled-rules-project-file top))
     (should-not (buffer-local-value
-                 'lsp-ltex-plus-project-hidden-false-positives-file top))))
+                 'lsp-ltex-plus-hidden-false-positives-project-file top))))
 
 ;;;; -- Resolving the path -----------------------------------------------------
 
@@ -94,19 +94,33 @@ would give `sub/deeper/' a dictionary of its own."
   (ltex-plus-project-test--in-project
     (should (equal (with-current-buffer top
                      (lsp-ltex-plus--project-file
-                      'lsp-ltex-plus-project-dictionary-file))
+                      'lsp-ltex-plus-dictionary-project-file))
                    dictionary-file))
     (should (equal (with-current-buffer nested
                      (lsp-ltex-plus--project-file
-                      'lsp-ltex-plus-project-dictionary-file))
+                      'lsp-ltex-plus-dictionary-project-file))
                    dictionary-file))))
+
+(ert-deftest ltex-plus-project-test-an-old-name-in-dir-locals-still-applies ()
+  "A `.dir-locals.el' written before 1.2.0 still gives the project its file.
+It names `lsp-ltex-plus-project-dictionary-file', now an obsolete alias
+of `lsp-ltex-plus-dictionary-project-file'."
+  (ltex-plus-test-reset)
+  (ltex-plus-test-with-project
+      '((".dir-locals.el"
+         . "((nil . ((lsp-ltex-plus-project-dictionary-file . \".ltex/dictionary.eld\"))))")
+        ("doc.md" . "text\n"))
+    (with-current-buffer (ltex-plus-test-visit (project-file "doc.md"))
+      (should (equal (lsp-ltex-plus--project-file
+                      'lsp-ltex-plus-dictionary-project-file)
+                     (project-file ".ltex/dictionary.eld"))))))
 
 (ert-deftest ltex-plus-project-test-no-project-resolves-to-nil ()
   "A buffer no `.dir-locals.el' governs has no project file."
   (ltex-plus-project-test--in-project
     (should-not (with-current-buffer outside
                   (lsp-ltex-plus--project-file
-                   'lsp-ltex-plus-project-dictionary-file)))))
+                   'lsp-ltex-plus-dictionary-project-file)))))
 
 (ert-deftest ltex-plus-project-test-fileless-buffer-has-no-project ()
   "A buffer with no file belongs to no project and sees the global lists.

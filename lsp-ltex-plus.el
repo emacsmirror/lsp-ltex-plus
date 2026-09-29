@@ -113,7 +113,7 @@ Everything the client reads is refreshed in one go:
   1. The four word-list files under the `lsp-ltex-plus/\=' subdirectory of
      `user-emacs-directory\=' are re-read and their merged views rebuilt,
      and the cache of project settings files is dropped (see the
-     `lsp-ltex-plus-project-*-file\=' settings).
+     `lsp-ltex-plus-*-project-file\=' settings).
   2. The running server is told the configuration changed, so it fetches
      its settings again and the change takes effect on the next check
      with no server restart.

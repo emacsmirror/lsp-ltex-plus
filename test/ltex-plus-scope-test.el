@@ -177,7 +177,7 @@ list alone; a dead document gets the global list too."
   (ltex-plus-fake-with-connection
     (ltex-plus-test-with-project
         '((".dir-locals.el"
-           . "((nil . ((lsp-ltex-plus-project-dictionary-file . \".ltex/words.eld\"))))")
+           . "((nil . ((lsp-ltex-plus-dictionary-project-file . \".ltex/words.eld\"))))")
           (".ltex/words.eld" . "(:en-US [\"Wittgenstein\"])")
           ("doc.rst" . "text\n"))
       (let ((inside (ltex-plus-test-visit (project-file "doc.rst"))))

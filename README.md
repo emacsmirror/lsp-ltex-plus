@@ -481,13 +481,13 @@ An empty space means the parameter has no direct counterpart at that layer: typi
 | `lsp-ltex-plus-disabled-rules` | L | X | Language-specific list of rules to disable. *Type:* plist; *default:* `nil`. See [External settings](#external-settings). | X | X |
 | `lsp-ltex-plus-hidden-false-positives` | L | X | Regex-based suppression of false-positive diagnostics (language-specific). *Type:* plist; *default:* `nil`. See [External settings](#external-settings). | X | |
 | `lsp-ltex-plus-dictionary-file` |  |  | The file holding the global dictionary (plist format); see [External settings](#external-settings). Set it before the package loads, or run `M-x lsp-ltex-plus-reload-settings` afterwards. An existing file is not moved for you. *Type:* file; *default:* `stored-dictionary.eld` under the `lsp-ltex-plus/` subdirectory of `user-emacs-directory`. | | |
-| `lsp-ltex-plus-project-dictionary-file` | L | X | File holding *this project's* additional accepted words, merged with (never replacing) `lsp-ltex-plus-dictionary` and the global dictionary file. Normally set from the project's `.dir-locals.el`; a relative name resolves against the directory holding that file. *Type:* `nil` or file; *default:* `nil`. See [Project-local settings](#project-local-settings). | | |
+| `lsp-ltex-plus-dictionary-project-file` | L | X | File holding *this project's* additional accepted words, merged with (never replacing) `lsp-ltex-plus-dictionary` and the global dictionary file. Normally set from the project's `.dir-locals.el`; a relative name resolves against the directory holding that file. Renamed from `lsp-ltex-plus-project-dictionary-file` in 1.2.0; the old name still works. *Type:* `nil` or file; *default:* `nil`. See [Project-local settings](#project-local-settings). | | |
 | `lsp-ltex-plus-enabled-rules-file` |  |  | As `lsp-ltex-plus-dictionary-file`, for the rules you enable. *Type:* file; *default:* `enabled-rules.eld` under the `lsp-ltex-plus/` subdirectory of `user-emacs-directory`. | | |
-| `lsp-ltex-plus-project-enabled-rules-file` | L | X | As `lsp-ltex-plus-project-dictionary-file`, for rules this project enables. *Type:* `nil` or file; *default:* `nil`. | | |
+| `lsp-ltex-plus-enabled-rules-project-file` | L | X | As `lsp-ltex-plus-dictionary-project-file`, for rules this project enables. Renamed from `lsp-ltex-plus-project-enabled-rules-file` in 1.2.0; the old name still works. *Type:* `nil` or file; *default:* `nil`. | | |
 | `lsp-ltex-plus-disabled-rules-file` |  |  | As `lsp-ltex-plus-dictionary-file`, for the rules you disable. *Type:* file; *default:* `disabled-rules.eld` under the `lsp-ltex-plus/` subdirectory of `user-emacs-directory`. | | |
-| `lsp-ltex-plus-project-disabled-rules-file` | L | X | As `lsp-ltex-plus-project-dictionary-file`, for rules this project disables. *Type:* `nil` or file; *default:* `nil`. | | |
+| `lsp-ltex-plus-disabled-rules-project-file` | L | X | As `lsp-ltex-plus-dictionary-project-file`, for rules this project disables. Renamed from `lsp-ltex-plus-project-disabled-rules-file` in 1.2.0; the old name still works. *Type:* `nil` or file; *default:* `nil`. | | |
 | `lsp-ltex-plus-hidden-false-positives-file` |  |  | As `lsp-ltex-plus-dictionary-file`, for the false positives you hide. *Type:* file; *default:* `hidden-false-positives.eld` under the `lsp-ltex-plus/` subdirectory of `user-emacs-directory`. | | |
-| `lsp-ltex-plus-project-hidden-false-positives-file` | L | X | As `lsp-ltex-plus-project-dictionary-file`, for false positives this project hides. *Type:* `nil` or file; *default:* `nil`. | | |
+| `lsp-ltex-plus-hidden-false-positives-project-file` | L | X | As `lsp-ltex-plus-dictionary-project-file`, for false positives this project hides. Renamed from `lsp-ltex-plus-project-hidden-false-positives-file` in 1.2.0; the old name still works. *Type:* `nil` or file; *default:* `nil`. | | |
 | `lsp-ltex-plus-save-additions-to` | L | X | Where an accepted suggestion (*Add to dictionary*, *Disable rule …*, *Hide false positive …*) is written. Never affects what is *read* — a document is always checked against both lists. *Choices:* `either-allowing-user-choice` (default), `per-project-when-specified`, `globally-defined`. See [Project-local settings](#project-local-settings). | | |
 | `lsp-ltex-plus-bibtex-fields` | L | X | BibTeX fields whose values are to be checked. *Type:* alist of `(field-name . boolean)`, where field-name is a symbol; *default:* `nil`. | X | |
 | `lsp-ltex-plus-latex-commands` | L | X | LaTeX commands to be handled by the LaTeX parser, listed with empty arguments. *Type:* alist of `(command . action)`, where command is a symbol (not a string) with the initial backslash doubled, e.g. `\\ref{}`, `\\documentclass[]{}`; action is `"default"`, `"ignore"`, `"dummy"`, `"pluralDummy"`, or `"vowelDummy"`; *default:* `nil`. | X | |
@@ -597,8 +597,8 @@ Point one or more of the four project settings at a file from the project's `.di
 
 ```elisp
 ;; .dir-locals.el at the root of your project
-((nil . ((lsp-ltex-plus-project-dictionary-file . ".ltex/dictionary.eld")
-         (lsp-ltex-plus-project-disabled-rules-file . ".ltex/disabled-rules.eld"))))
+((nil . ((lsp-ltex-plus-dictionary-project-file . ".ltex/dictionary.eld")
+         (lsp-ltex-plus-disabled-rules-project-file . ".ltex/disabled-rules.eld"))))
 ```
 
 The files use the same plist format as the global ones, and each is optional: configure only a dictionary and the project collects words while your global rule choices stay global.

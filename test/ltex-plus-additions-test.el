@@ -18,7 +18,7 @@
 
 (defconst ltex-plus-additions-test--spec
   '((".dir-locals.el"
-     . "((nil . ((lsp-ltex-plus-project-dictionary-file
+     . "((nil . ((lsp-ltex-plus-dictionary-project-file
                   . \".ltex/dictionary.eld\"))))")
     ("doc.rst" . "text\n"))
   "A project keeping its own dictionary -- and no rules or false-positives file.
@@ -231,8 +231,8 @@ The vocabulary matches the setting's own values -- project and global,
 never \"personal\": the distinction is scope, not ownership."
   (ltex-plus-additions-test--in-project
     (with-current-buffer buffer
-      (let ((lsp-ltex-plus-project-disabled-rules-file ".ltex/disabled-rules.eld")
-            (lsp-ltex-plus-project-hidden-false-positives-file ".ltex/fps.eld"))
+      (let ((lsp-ltex-plus-disabled-rules-project-file ".ltex/disabled-rules.eld")
+            (lsp-ltex-plus-hidden-false-positives-project-file ".ltex/fps.eld"))
         (should (equal (ltex-plus-test-titles
                         (lsp-ltex-plus--expand-suggestions
                          (list (ltex-plus-test-suggestion

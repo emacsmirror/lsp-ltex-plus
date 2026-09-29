@@ -116,10 +116,10 @@ read from and written to, without a prompt.  Modelled on AUCTeX's
   "The two settings that need more than a type check carry it."
   (should (eq (get 'lsp-ltex-plus-lt-server-uri 'safe-local-variable)
               #'lsp-ltex-plus--lt-server-uri-safe-p))
-  (dolist (setting '(lsp-ltex-plus-project-dictionary-file
-                     lsp-ltex-plus-project-enabled-rules-file
-                     lsp-ltex-plus-project-disabled-rules-file
-                     lsp-ltex-plus-project-hidden-false-positives-file))
+  (dolist (setting '(lsp-ltex-plus-dictionary-project-file
+                     lsp-ltex-plus-enabled-rules-project-file
+                     lsp-ltex-plus-disabled-rules-project-file
+                     lsp-ltex-plus-hidden-false-positives-project-file))
     (should (eq (get setting 'safe-local-variable)
                 #'lsp-ltex-plus--project-file-safe-p))))
 
@@ -175,10 +175,10 @@ silently do nothing would say it works."
             lsp-ltex-plus-completion-enabled
             lsp-ltex-plus-clear-diagnostics-when-closing-file
             lsp-ltex-plus-save-additions-to
-            lsp-ltex-plus-project-dictionary-file
-            lsp-ltex-plus-project-enabled-rules-file
-            lsp-ltex-plus-project-disabled-rules-file
-            lsp-ltex-plus-project-hidden-false-positives-file))))
+            lsp-ltex-plus-dictionary-project-file
+            lsp-ltex-plus-enabled-rules-project-file
+            lsp-ltex-plus-disabled-rules-project-file
+            lsp-ltex-plus-hidden-false-positives-project-file))))
     (should-not undeclared)))
 
 (ert-deftest ltex-plus-safety-test-declared-predicates-accept-the-default ()
@@ -204,6 +204,26 @@ being trusted and start prompting."
   (let ((lsp-ltex-plus-idle-delay 0.5))
     (with-no-warnings (setq lsp-ltex-plus-change-delay 0.9))
     (should (eql lsp-ltex-plus-idle-delay 0.9))))
+
+(ert-deftest ltex-plus-safety-test-the-renamed-project-files-answer-to-their-old-names ()
+  "The four `lsp-ltex-plus-project-*-file' names still work, and in silence.
+Renamed in 1.2.0 to `lsp-ltex-plus-*-project-file'.  As for the delay,
+the alias carries the value and the `safe-local-variable' property is
+put on each old name by hand."
+  (dolist (pair '((lsp-ltex-plus-project-dictionary-file
+                   . lsp-ltex-plus-dictionary-project-file)
+                  (lsp-ltex-plus-project-enabled-rules-file
+                   . lsp-ltex-plus-enabled-rules-project-file)
+                  (lsp-ltex-plus-project-disabled-rules-file
+                   . lsp-ltex-plus-disabled-rules-project-file)
+                  (lsp-ltex-plus-project-hidden-false-positives-file
+                   . lsp-ltex-plus-hidden-false-positives-project-file)))
+    (should (eq (indirect-variable (car pair)) (cdr pair)))
+    (should (safe-local-variable-p (car pair) ".ltex/list.eld"))
+    (should-not (safe-local-variable-p (car pair) "../elsewhere.eld"))
+    (with-temp-buffer
+      (set (make-local-variable (car pair)) ".ltex/list.eld")
+      (should (equal (symbol-value (cdr pair)) ".ltex/list.eld")))))
 
 (provide 'ltex-plus-safety-test)
 ;;; ltex-plus-safety-test.el ends here

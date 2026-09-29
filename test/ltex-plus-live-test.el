@@ -196,7 +196,7 @@ lands in is what the next check reads, is only visible here."
          (lsp-ltex-plus-save-additions-to 'either-allowing-user-choice))
     (ltex-plus-live-write
      ".dir-locals.el"
-     "((nil . ((lsp-ltex-plus-project-dictionary-file . \".ltex/words.eld\"))))"
+     "((nil . ((lsp-ltex-plus-dictionary-project-file . \".ltex/words.eld\"))))"
      root)
     (let ((buffer (ltex-plus-live-open
                    (ltex-plus-live-write "doc.md" (format "A %s appeared.\n" word) root))))
@@ -261,7 +261,7 @@ listened to."
          (text (format "The %s grows here.\n" word)))
     (ltex-plus-live-write
      ".dir-locals.el"
-     "((nil . ((lsp-ltex-plus-project-dictionary-file . \".ltex/words.eld\"))))"
+     "((nil . ((lsp-ltex-plus-dictionary-project-file . \".ltex/words.eld\"))))"
      inside)
     (ltex-plus-live-write ".ltex/words.eld" (format "(:en-US [\"%s\"])" word) inside)
     (let ((in-project (ltex-plus-live-open
@@ -284,7 +284,7 @@ keeps a dictionary of its own, since the two are merged."
     (lsp-ltex-plus--load-external-settings)
     (ltex-plus-live-write
      ".dir-locals.el"
-     "((nil . ((lsp-ltex-plus-project-dictionary-file . \".ltex/words.eld\"))))"
+     "((nil . ((lsp-ltex-plus-dictionary-project-file . \".ltex/words.eld\"))))"
      inside)
     (ltex-plus-live-write ".ltex/words.eld" "(:en-US [\"Unrelated\"])" inside)
     (let ((buffer (ltex-plus-live-open (ltex-plus-live-write "doc.md" text inside))))

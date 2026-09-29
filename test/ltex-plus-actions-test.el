@@ -330,7 +330,7 @@ history, and the order above would survive only by luck."
   (ltex-plus-fake-with-connection
     (ltex-plus-test-with-project
         '((".dir-locals.el"
-           . "((nil . ((lsp-ltex-plus-project-dictionary-file . \".ltex/words.eld\"))))")
+           . "((nil . ((lsp-ltex-plus-dictionary-project-file . \".ltex/words.eld\"))))")
           ("doc.rst" . "Hello teh world.\n"))
       (let ((buffer (ltex-plus-test-visit (project-file "doc.rst"))))
         (with-current-buffer buffer (rst-mode))

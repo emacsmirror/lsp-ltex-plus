@@ -806,7 +806,7 @@ are read only when their modification time has moved.  MTIME is nil for
 a file that does not exist, which is itself cached — creating the file
 later moves the time off nil and the entry is refreshed.  Filled and
 consulted by `lsp-ltex-plus--load-project-plist'; see the
-`lsp-ltex-plus-project-*-file' settings.")
+`lsp-ltex-plus-*-project-file' settings.")
 
 (defvar lsp-ltex-plus--server-name nil
   "Name the connected ltex-ls-plus gave in its `serverInfo\\=', or nil.
@@ -1058,16 +1058,36 @@ keyword keys, vectors of strings as values, e.g.
      :safe #'lsp-ltex-plus--project-file-safe-p
      :group 'lsp-ltex-plus))
 
-(lsp-ltex-plus--define-project-file lsp-ltex-plus-project-dictionary-file
+;; Renamed in 1.2.0 so that each sorts next to its global counterpart,
+;; `lsp-ltex-plus-dictionary-file' and the rest.
+(define-obsolete-variable-alias 'lsp-ltex-plus-project-dictionary-file
+  'lsp-ltex-plus-dictionary-project-file "1.2.0")
+(define-obsolete-variable-alias 'lsp-ltex-plus-project-enabled-rules-file
+  'lsp-ltex-plus-enabled-rules-project-file "1.2.0")
+(define-obsolete-variable-alias 'lsp-ltex-plus-project-disabled-rules-file
+  'lsp-ltex-plus-disabled-rules-project-file "1.2.0")
+(define-obsolete-variable-alias 'lsp-ltex-plus-project-hidden-false-positives-file
+  'lsp-ltex-plus-hidden-false-positives-project-file "1.2.0")
+
+;; `safe-local-variable' does not follow an alias, so a project whose
+;; `.dir-locals.el' still names an old variable would start asking the
+;; user to approve a value this package has always vouched for.
+(dolist (old '(lsp-ltex-plus-project-dictionary-file
+               lsp-ltex-plus-project-enabled-rules-file
+               lsp-ltex-plus-project-disabled-rules-file
+               lsp-ltex-plus-project-hidden-false-positives-file))
+  (put old 'safe-local-variable #'lsp-ltex-plus--project-file-safe-p))
+
+(lsp-ltex-plus--define-project-file lsp-ltex-plus-dictionary-project-file
                                     ".ltex/dictionary.eld"
                                     "additional accepted words")
-(lsp-ltex-plus--define-project-file lsp-ltex-plus-project-enabled-rules-file
+(lsp-ltex-plus--define-project-file lsp-ltex-plus-enabled-rules-project-file
                                     ".ltex/enabled-rules.eld"
                                     "rules to enable")
-(lsp-ltex-plus--define-project-file lsp-ltex-plus-project-disabled-rules-file
+(lsp-ltex-plus--define-project-file lsp-ltex-plus-disabled-rules-project-file
                                     ".ltex/disabled-rules.eld"
                                     "rules to disable")
-(lsp-ltex-plus--define-project-file lsp-ltex-plus-project-hidden-false-positives-file
+(lsp-ltex-plus--define-project-file lsp-ltex-plus-hidden-false-positives-project-file
                                     ".ltex/hidden-false-positives.eld"
                                     "false positives to hide")
 
@@ -1076,28 +1096,28 @@ keyword keys, vectors of strings as values, e.g.
      :custom        lsp-ltex-plus-dictionary
      :stored        lsp-ltex-plus--dictionary-stored
      :global-file lsp-ltex-plus-dictionary-file
-     :project-file  lsp-ltex-plus-project-dictionary-file
+     :project-file  lsp-ltex-plus-dictionary-project-file
      :command       "_ltex.addToDictionary"
      :argument-key  :words)
     (enabled-rules
      :custom        lsp-ltex-plus-enabled-rules
      :stored        lsp-ltex-plus--enabled-rules-stored
      :global-file lsp-ltex-plus-enabled-rules-file
-     :project-file  lsp-ltex-plus-project-enabled-rules-file
+     :project-file  lsp-ltex-plus-enabled-rules-project-file
      :command       nil
      :argument-key  nil)
     (disabled-rules
      :custom        lsp-ltex-plus-disabled-rules
      :stored        lsp-ltex-plus--disabled-rules-stored
      :global-file lsp-ltex-plus-disabled-rules-file
-     :project-file  lsp-ltex-plus-project-disabled-rules-file
+     :project-file  lsp-ltex-plus-disabled-rules-project-file
      :command       "_ltex.disableRules"
      :argument-key  :ruleIds)
     (hidden-false-positives
      :custom        lsp-ltex-plus-hidden-false-positives
      :stored        lsp-ltex-plus--hidden-false-positives-stored
      :global-file lsp-ltex-plus-hidden-false-positives-file
-     :project-file  lsp-ltex-plus-project-hidden-false-positives-file
+     :project-file  lsp-ltex-plus-hidden-false-positives-project-file
      :command       "_ltex.hideFalsePositives"
      :argument-key  :falsePositives))
   "The four language-keyed settings, by kind.
@@ -1155,7 +1175,7 @@ that was set globally rather than per project."
 
 (defun lsp-ltex-plus--project-file (variable)
   "Return the absolute path VARIABLE names for the current buffer, or nil.
-VARIABLE is one of the `lsp-ltex-plus-project-*-file' settings; a
+VARIABLE is one of the `lsp-ltex-plus-*-project-file' settings; a
 relative value resolves against the directory holding the
 `.dir-locals.el' that set it."
   (when-let* ((value (symbol-value variable)))
@@ -1345,7 +1365,7 @@ substitutes the shared empty hash-table for nil so `json-serialize' emits
 ambiguity.
 
 Each value comes from `lsp-ltex-plus--effective-plist', so a project that
-sets any of the `lsp-ltex-plus-project-*-file' settings has its own lists
+sets any of the `lsp-ltex-plus-*-project-file' settings has its own lists
 folded in on top of the global ones."
   (list :dictionary           (lsp-ltex-plus--obj-or-empty (lsp-ltex-plus--effective-plist 'dictionary))
         :disabledRules        (lsp-ltex-plus--obj-or-empty (lsp-ltex-plus--effective-plist 'disabled-rules))
