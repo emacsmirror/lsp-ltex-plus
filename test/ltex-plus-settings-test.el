@@ -370,14 +370,16 @@ keeps the global one."
     (should-not (funcall annotate other))
     (should-not default)))
 
-(ert-deftest ltex-plus-settings-test-the-menu-returns-the-code-or-what-was-typed ()
-  "Picking an entry gives its code; a code typed and confirmed is kept as typed."
-  (let ((candidates (lsp-ltex-plus--language-candidates)))
+(ert-deftest ltex-plus-settings-test-the-menu-accepts-only-its-own-entries ()
+  "Picking an entry gives its code, and the menu requires a match."
+  (let ((candidates (lsp-ltex-plus--language-candidates))
+        require-match)
     (cl-letf (((symbol-function 'completing-read)
-               (lambda (&rest _) (car (rassoc "pt-BR" candidates)))))
+               (lambda (_prompt _table _predicate match &rest _)
+                 (setq require-match match)
+                 (car (rassoc "pt-BR" candidates)))))
       (should (equal (lsp-ltex-plus--read-language "? ") "pt-BR")))
-    (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "en")))
-      (should (equal (lsp-ltex-plus--read-language "? ") "en")))))
+    (should (eq require-match t))))
 
 (ert-deftest ltex-plus-settings-test-setup-is-idempotent ()
   "Running setup twice leaves the lists as one run left them."

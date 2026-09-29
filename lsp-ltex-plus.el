@@ -158,8 +158,9 @@ either the name or the code completes."
 The menu is `lsp-ltex-plus--language-candidates', with the value of
 `lsp-ltex-plus-language' in the current buffer marked \"(current)\".
 There is no default: choosing the current language again changes
-nothing, and \\[keyboard-quit] leaves it.  A code not in the menu is
-accepted after confirmation and returned as typed."
+nothing, and \\[keyboard-quit] leaves it.  Only a language in the menu
+is accepted; a code the server also takes, such as the legacy \"fr\"
+or the alias \"no\", is not."
   (let* ((candidates (lsp-ltex-plus--language-candidates))
          (current (car (rassoc lsp-ltex-plus-language candidates)))
          (answer (completing-read prompt
@@ -167,19 +168,18 @@ accepted after confirmation and returned as typed."
                                    (mapcar #'car candidates) 'lsp-ltex-plus-language
                                    (lambda (label)
                                      (and (equal label current) "  (current)")))
-                                  nil 'confirm nil 'lsp-ltex-plus--language-history)))
+                                  nil t nil 'lsp-ltex-plus--language-history)))
     (when (string-empty-p answer)
       (user-error "No language chosen"))
-    (or (cdr (assoc answer candidates)) answer)))
+    (cdr (assoc answer candidates))))
 
 ;;;###autoload
 (defun lsp-ltex-plus-change-language (language &optional global)
   "Set `lsp-ltex-plus-language' to LANGUAGE in the current buffer.
 Interactively, LANGUAGE is picked from a menu of the languages LTeX+
-supports, listed by name with the code after it; a code not listed
-there is accepted after confirmation.  With a prefix argument (GLOBAL
-non-nil), set the global value instead: every buffer without a value
-of its own follows it.
+supports, listed by name with the code after it.  With a prefix
+argument (GLOBAL non-nil), set the global value instead: every buffer
+without a value of its own follows it.
 
 The running server is told the configuration changed, so it fetches its
 settings again and checks the document in the new language, with no
