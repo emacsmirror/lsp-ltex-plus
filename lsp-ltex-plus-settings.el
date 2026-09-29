@@ -317,6 +317,7 @@ document, such as `<!-- LTeX: language=de-DE -->' in Markdown or
 from that line to the end of the document, whether or not this list
 names the language; a later `language=#' restores the buffer's value."
   :type `(set ,@(mapcar #'lsp-ltex-plus--language-const lsp-ltex-plus--languages))
+  :safe #'list-of-strings-p
   :group 'lsp-ltex-plus)
 
 (defun lsp-ltex-plus--symbol-keyed-alist-p (value)

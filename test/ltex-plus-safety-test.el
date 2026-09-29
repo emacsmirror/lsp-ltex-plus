@@ -146,6 +146,7 @@ silently do nothing would say it works."
          (seq-remove
           (lambda (setting) (get setting 'safe-local-variable))
           '(lsp-ltex-plus-language
+            lsp-ltex-plus-offered-languages
             lsp-ltex-plus-dictionary
             lsp-ltex-plus-enabled-rules
             lsp-ltex-plus-disabled-rules
