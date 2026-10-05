@@ -48,7 +48,13 @@ jobs:
 
       - name: Run melpazoid
         env:
-          LOCAL_REPO: ${{ github.workspace }}
+          # melpazoid clones the recipe's repository at this branch, the
+          # one pushed or the pull request's.  It is not given the
+          # checkout as LOCAL_REPO: since melpazoid commit d7e253d it
+          # builds no container for a local repository, so byte-compile,
+          # checkdoc and package-lint would not run.  A pull request from
+          # a fork names a branch this repository does not have.
+          CI_BRANCH: ${{ github.head_ref || github.ref_name }}
           # The recipe MELPA itself builds from, so that what is checked
           # here is what MELPA ships.
           RECIPE: (lsp-ltex-plus :fetcher github :repo "ltex-plus/emacs-ltex-plus")
