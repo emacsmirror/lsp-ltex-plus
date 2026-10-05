@@ -752,17 +752,38 @@ document region; narrowing is ignored."
                   :character (lsp-ltex-plus--utf16-width
                               (buffer-substring-no-properties origin (point))))))))))
 
+(defun lsp-ltex-plus--widen-empty-range (point)
+  "Return (BEG . END), the character to underline for an empty range at POINT.
+The server sends an empty range for a position between two characters,
+such as a missing period at the end of a line.  Inside a line, the
+character after POINT; at the end of a line, the character before it,
+so that the underline stays on the line the diagnostic names; on an
+empty line, the line break.  At the end of an empty buffer, POINT
+itself, as an empty region.  The document region's start counts as
+the start of its line."
+  (save-excursion
+    (save-restriction
+      (widen)
+      (goto-char point)
+      (cond ((< point (line-end-position))
+             (cons point (1+ point)))
+            ((> point (max (line-beginning-position)
+                           (car (lsp-ltex-plus--document-region-or-end))))
+             (cons (1- point) point))
+            (t (cons point (min (1+ point) (point-max))))))))
+
 (defun lsp-ltex-plus--diagnostic-region (diagnostic &optional buffer)
   "Return (BEG . END), the points DIAGNOSTIC spans in BUFFER.
-An empty range is widened to one character where it can be, so that
-there is something to underline."
-  (let* ((range (plist-get diagnostic :range))
-         (beg (lsp-ltex-plus--position-to-point (plist-get range :start) buffer))
-         (end (lsp-ltex-plus--position-to-point (plist-get range :end) buffer)))
-    (when (= beg end)
-      (with-current-buffer (or buffer (current-buffer))
-        (setq end (min (1+ end) (save-restriction (widen) (point-max))))))
-    (cons beg end)))
+An empty range is widened to one character by
+`lsp-ltex-plus--widen-empty-range', so that there is something to
+underline."
+  (with-current-buffer (or buffer (current-buffer))
+    (let* ((range (plist-get diagnostic :range))
+           (beg (lsp-ltex-plus--position-to-point (plist-get range :start)))
+           (end (lsp-ltex-plus--position-to-point (plist-get range :end))))
+      (if (= beg end)
+          (lsp-ltex-plus--widen-empty-range beg)
+        (cons beg end)))))
 
 ;; Converting one position walks from the document's start to its line,
 ;; so converting every diagnostic on its own costs findings times lines:
@@ -838,14 +859,20 @@ rather than converting each diagnostic on its own."
                                   (let ((range (plist-get diagnostic :range)))
                                     (list (plist-get range :start) (plist-get range :end))))
                                 diagnostics)))
-             (limit (save-restriction (widen) (point-max)))
              (i -1)
              (places
               (mapcar (lambda (diagnostic)
                         (pcase-let ((`(,beg . ,beg-line) (aref resolved (cl-incf i)))
                                     (`(,end . ,end-line) (aref resolved (cl-incf i))))
                           (when (= beg end)
-                            (setq end (min (1+ end) limit)))
+                            ;; Only the line break of an empty line takes
+                            ;; the end to the next line.
+                            (pcase-setq `(,beg . ,end) (lsp-ltex-plus--widen-empty-range beg))
+                            (setq end-line (if (and (< beg end)
+                                                    (eq (save-restriction (widen) (char-after beg))
+                                                        ?\n))
+                                               (1+ beg-line)
+                                             beg-line)))
                           (list diagnostic beg end beg-line end-line)))
                       diagnostics)))
         (setq lsp-ltex-plus--diagnostic-places (cons diagnostics places))

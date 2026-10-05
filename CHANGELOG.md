@@ -1,5 +1,10 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+- **A diagnostic with an empty range at the end of a line was underlined at the start of the next line under flycheck.** The server sends an empty range for a position between two characters; LanguageTool Premium reports a missing period at the end of a line that way. The client widened every empty range by the character after it, which at the end of a line is the line break, so the end moved to the next line while the end line still named the first, and flycheck underlined the first character of the next line. An empty range at the end of a line is now widened by the character before it, and the end line always matches the end. Inside a line the character after is still taken; on an empty line, the line break.
+
 ## [1.2.0] - 2026-09-29
 
 ### Added

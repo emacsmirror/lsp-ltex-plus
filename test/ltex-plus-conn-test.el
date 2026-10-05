@@ -758,6 +758,26 @@ fast way must place each of them exactly where the slow way did."
       (should (= beg-line (line-number-at-pos beg t)))
       (should (= end-line (line-number-at-pos end t))))))
 
+(ert-deftest ltex-plus-conn-test-an-empty-range-is-underlined-on-its-line ()
+  "An empty range is widened to a character on the line it names.
+LanguageTool Premium reports a missing period at the end of a line as
+an empty range there.  Widened forwards, it took in the line break,
+and flycheck was handed an end on the next line under the end line of
+the first, so it underlined the first character of the next line."
+  (with-temp-buffer
+    (insert "#+title: Title\n\nmid line\n")
+    (setq lsp-ltex-plus--diagnostics
+          (list (ltex-plus-conn-test--diagnostic-at 0 14 0 14)   ; end of a line
+                (ltex-plus-conn-test--diagnostic-at 1 0 1 0)     ; an empty line
+                (ltex-plus-conn-test--diagnostic-at 2 3 2 3)))   ; inside a line
+    (should (equal (mapcar #'cdr (lsp-ltex-plus--diagnostic-places))
+                   '((14 15 1 1) (16 17 2 3) (20 21 3 3))))
+    (pcase-dolist (`(,diagnostic ,beg ,end ,beg-line ,end-line)
+                   (lsp-ltex-plus--diagnostic-places))
+      (should (equal (cons beg end) (lsp-ltex-plus--diagnostic-region diagnostic)))
+      (should (= beg-line (line-number-at-pos beg t)))
+      (should (= end-line (line-number-at-pos end t))))))
+
 (ert-deftest ltex-plus-conn-test-places-are-kept-until-something-changes ()
   "The places are computed once per publish and dropped on an edit.
 Flycheck and flymake ask again at every pause in typing; without the
