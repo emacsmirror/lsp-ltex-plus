@@ -33,40 +33,47 @@
 
 ;;;; -- Asking the server -------------------------------------------------------
 
-(defun lsp-ltex-plus--diagnostics-in (beg end &optional buffer)
-  "Return the stored diagnostics of BUFFER that touch the region BEG..END.
-BUFFER defaults to the current buffer.  When BEG and END are the same
+(defun lsp-ltex-plus--places-in (beg end &optional buffer)
+  "Return the places of BUFFER's stored diagnostics that touch BEG..END.
+BUFFER defaults to the current buffer.  Each is an entry of
+`lsp-ltex-plus--diagnostic-places'.  When BEG and END are the same
 position, the diagnostics whose text contains it, the end of the text
 included -- point just after a flagged word still counts as being on
-it.  These are what the server is given as the context of a code action
-request, and what decides which suggestions it makes."
+it.  Their diagnostics are what the server is given as the context of
+a code action request."
   (with-current-buffer (or buffer (current-buffer))
-    (mapcar #'car
-            (seq-filter (pcase-lambda (`(,_ ,dbeg ,dend ,_ ,_))
-                          (if (= beg end)
-                              (and (<= dbeg beg) (<= beg dend))
-                            (and (< dbeg end) (< beg dend))))
-                        (lsp-ltex-plus--diagnostic-places)))))
+    (seq-filter (pcase-lambda (`(,_ ,dbeg ,dend ,_ ,_))
+                  (if (= beg end)
+                      (and (<= dbeg beg) (<= beg dend))
+                    (and (< dbeg end) (< beg dend))))
+                (lsp-ltex-plus--diagnostic-places))))
 
 (defun lsp-ltex-plus--request-code-actions (beg end)
   "Return the code actions the server offers for BEG..END in the current buffer.
-A list of the protocol's code action objects, possibly empty.  Waits
-for the reply: the server answers from the check it has already done,
-so this is quick.  Signals a `user-error' in a buffer that is not open
-on a running server."
+A list of the protocol's code action objects, possibly empty.  The
+range asked about is BEG..END widened to cover the diagnostics there:
+the server offers actions only for a match whose range meets the range
+asked about, and a diagnostic with an empty range, underlined one
+character wide, would otherwise get the menu only with point exactly
+at its position.  Waits for the reply: the server answers from the
+check it has already done, so this is quick.  Signals a `user-error'
+in a buffer that is not open on a running server."
   (let ((conn (lsp-ltex-plus--live-connection))
         (uri lsp-ltex-plus--document-uri))
     (unless (and conn uri)
       (user-error "[lsp-ltex-plus] This buffer is not being checked"))
-    (append (jsonrpc-request
-             conn 'textDocument/codeAction
-             (list :textDocument (list :uri uri)
-                   :range (list :start (lsp-ltex-plus--point-to-position beg)
-                                :end (lsp-ltex-plus--point-to-position end))
-                   :context (list :diagnostics
-                                  (vconcat (lsp-ltex-plus--diagnostics-in beg end))))
-             :timeout 10)
-            nil)))
+    (let ((places (lsp-ltex-plus--places-in beg end)))
+      (pcase-dolist (`(,_ ,dbeg ,dend ,_ ,_) places)
+        (setq beg (min beg dbeg)
+              end (max end dend)))
+      (append (jsonrpc-request
+               conn 'textDocument/codeAction
+               (list :textDocument (list :uri uri)
+                     :range (list :start (lsp-ltex-plus--point-to-position beg)
+                                  :end (lsp-ltex-plus--point-to-position end))
+                     :context (list :diagnostics (vconcat (mapcar #'car places))))
+               :timeout 10)
+              nil))))
 
 ;;;; -- Applying an edit ---------------------------------------------------------
 

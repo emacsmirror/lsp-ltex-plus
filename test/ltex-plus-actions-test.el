@@ -32,17 +32,17 @@
 The text is \"Hello teh world.\"; the word spans points 7 to 10."
   (ltex-plus-actions-test--with-diagnostics "Hello teh world.\n"
     (dolist (point '(7 8 9 10))
-      (should (= 1 (length (lsp-ltex-plus--diagnostics-in point point)))))
+      (should (= 1 (length (lsp-ltex-plus--places-in point point)))))
     (dolist (point '(1 6 11 17))
-      (should-not (lsp-ltex-plus--diagnostics-in point point)))))
+      (should-not (lsp-ltex-plus--places-in point point)))))
 
 (ert-deftest ltex-plus-actions-test-a-region-finds-what-it-overlaps ()
   "A region finds every diagnostic it overlaps, and none it merely abuts."
   (ltex-plus-actions-test--with-diagnostics "teh one and teh two.\n"
-    (should (= 2 (length (lsp-ltex-plus--diagnostics-in 1 21))))
-    (should (= 1 (length (lsp-ltex-plus--diagnostics-in 1 5))))
-    (should (= 1 (length (lsp-ltex-plus--diagnostics-in 13 14))))
-    (should-not (lsp-ltex-plus--diagnostics-in 4 13))))
+    (should (= 2 (length (lsp-ltex-plus--places-in 1 21))))
+    (should (= 1 (length (lsp-ltex-plus--places-in 1 5))))
+    (should (= 1 (length (lsp-ltex-plus--places-in 13 14))))
+    (should-not (lsp-ltex-plus--places-in 4 13))))
 
 ;;;; -- The request --------------------------------------------------------------
 
@@ -68,7 +68,8 @@ The text is \"Hello teh world.\"; the word spans points 7 to 10."
          ,@body))))
 
 (ert-deftest ltex-plus-actions-test-the-request-carries-range-and-diagnostics ()
-  "The server is asked about the position and given the diagnostics there."
+  "The server is asked about the diagnostics at point and given them.
+Point is inside \"teh\"; the range asked about is the word's."
   (ltex-plus-actions-test--with-checked-buffer buffer "Hello teh world.\n"
     (let ((ltex-plus-fake-code-actions (vector ltex-plus-actions-test--fix)))
       (with-current-buffer buffer
@@ -78,10 +79,27 @@ The text is \"Hello teh world.\"; the word spans points 7 to 10."
         (should (equal (plist-get (plist-get sent :textDocument) :uri)
                        (lsp-ltex-plus--buffer-uri buffer)))
         (should (equal (plist-get sent :range)
-                       '(:start (:line 0 :character 7) :end (:line 0 :character 7))))
+                       '(:start (:line 0 :character 6) :end (:line 0 :character 9))))
         (let ((context (plist-get (plist-get sent :context) :diagnostics)))
           (should (= 1 (length context)))
           (should (equal (plist-get (aref context 0) :code) "MORFOLOGIK_RULE_EN_US")))))))
+
+(ert-deftest ltex-plus-actions-test-an-empty-range-is-asked-about-from-its-underline ()
+  "Point on the underline of an empty range asks about a range that holds it.
+The server offers actions only for a match whose range meets the range
+asked about.  An empty range at the end of a line is underlined on the
+character before it, and point there is one character short of it."
+  (ltex-plus-actions-test--with-checked-buffer buffer "Hello teh world\n"
+    (let ((ltex-plus-fake-code-actions []))
+      (with-current-buffer buffer
+        (setq lsp-ltex-plus--diagnostics
+              (list '(:range (:start (:line 0 :character 15) :end (:line 0 :character 15))
+                      :severity 3 :code "QB_NEW_EN" :message "Add a period.")))
+        (lsp-ltex-plus--request-code-actions 15 15))
+      (let ((sent (car (ltex-plus-fake-received 'textDocument/codeAction))))
+        (should (equal (plist-get sent :range)
+                       '(:start (:line 0 :character 14) :end (:line 0 :character 15))))
+        (should (= 1 (length (plist-get (plist-get sent :context) :diagnostics))))))))
 
 (ert-deftest ltex-plus-actions-test-no-diagnostic-at-point-asks-with-none ()
   "Away from any underline the request still goes out, with an empty context.
