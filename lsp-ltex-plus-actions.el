@@ -35,8 +35,8 @@
 
 (defun lsp-ltex-plus--places-in (beg end &optional buffer)
   "Return the places of BUFFER's stored diagnostics that touch BEG..END.
-BUFFER defaults to the current buffer.  Each is an entry of
-`lsp-ltex-plus--diagnostic-places'.  When BEG and END are the same
+BUFFER defaults to the current buffer.  Each is an entry of the
+function `lsp-ltex-plus--diagnostic-places'.  When BEG and END are the same
 position, the diagnostics whose text contains it, the end of the text
 included -- point just after a flagged word still counts as being on
 it.  Their diagnostics are what the server is given as the context of
