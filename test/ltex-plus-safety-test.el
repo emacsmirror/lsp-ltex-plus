@@ -6,8 +6,9 @@
 
 ;;; Commentary:
 
-;; Every setting this client reads per document is declared `:safe', so a
-;; project's `.dir-locals.el' applies without a prompt.  The policy behind
+;; Every setting this client reads per document is declared safe in
+;; `lsp-ltex-plus--safe-variables', so a project's `.dir-locals.el' applies
+;; without a prompt.  The policy behind
 ;; those declarations is the thing worth pinning down, because it is a
 ;; judgement rather than a mechanism, and both directions of drift are
 ;; easy and quiet:
@@ -24,7 +25,7 @@
 ;;     it and the reasons are recorded in the source.
 ;;
 ;; The list of settings at the bottom is the other half: a new
-;; project-scopable defcustom that forgets its `:safe' declaration works
+;; project-scopable defcustom that is missing from the table works
 ;; perfectly for its author and prompts everyone else.
 
 ;;; Code:
@@ -109,6 +110,58 @@ read from and written to, without a prompt.  Modelled on AUCTeX's
   (should (lsp-ltex-plus--diagnostics-provider-p 'flycheck))
   (should-not (lsp-ltex-plus--diagnostics-provider-p 'flyspell))
   (should-not (lsp-ltex-plus--diagnostics-provider-p nil)))
+
+;;;; -- Registration -----------------------------------------------------------
+
+(ert-deftest ltex-plus-safety-test-registering-again-changes-nothing ()
+  "A second call leaves a property alone, even one changed since.
+`lsp-ltex-plus-enable-for-modes' calls the registration, loading the
+package calls it, and a user may call it too."
+  (let ((before (get 'lsp-ltex-plus-language 'safe-local-variable)))
+    (unwind-protect
+        (progn
+          (put 'lsp-ltex-plus-language 'safe-local-variable nil)
+          (lsp-ltex-plus-register-safe-variables)
+          (should-not (get 'lsp-ltex-plus-language 'safe-local-variable)))
+      (put 'lsp-ltex-plus-language 'safe-local-variable before))))
+
+(ert-deftest ltex-plus-safety-test-the-bootstrap-alone-vouches ()
+  "Directory-local values apply before the package is loaded.
+Emacs reads a project's `.dir-locals.el' when it visits a file, before
+the dispatcher loads the package, so the declarations must be in force
+once `lsp-ltex-plus-enable-for-modes' has run.  A fresh Emacs loads the
+bootstrap alone, visits a file in a project, and applies only safe
+values; the package itself must still be unloaded afterwards."
+  (let* ((project (file-name-as-directory
+                   (make-temp-file "ltex-plus-safety-" t)))
+         (file (expand-file-name "notes.unchecked" project))
+         (form
+          `(progn
+             (setq enable-local-variables :safe)
+             (lsp-ltex-plus-enable-for-modes :restrict-to '(org-mode))
+             (find-file ,file)
+             (prin1 (list lsp-ltex-plus-language
+                          lsp-ltex-plus-dictionary-project-file
+                          (featurep 'lsp-ltex-plus-settings))))))
+    (unwind-protect
+        (progn
+          (with-temp-file (expand-file-name ".dir-locals.el" project)
+            (prin1 '((nil . ((lsp-ltex-plus-language . "de-DE")
+                             (lsp-ltex-plus-dictionary-project-file
+                              . ".ltex/dictionary.eld"))))
+                   (current-buffer)))
+          (with-temp-file file (insert "Text.\n"))
+          (with-temp-buffer
+            (should (zerop (call-process
+                            (expand-file-name invocation-name
+                                              invocation-directory)
+                            nil (list t nil) nil
+                            "-Q" "--batch" "-L" ltex-plus-test-repo-root
+                            "-l" "lsp-ltex-plus-bootstrap"
+                            "--eval" (prin1-to-string form))))
+            (should (equal (car (read-from-string (buffer-string)))
+                           '("de-DE" ".ltex/dictionary.eld" nil)))))
+      (delete-directory project t))))
 
 ;;;; -- Which predicate is on which setting ------------------------------------
 

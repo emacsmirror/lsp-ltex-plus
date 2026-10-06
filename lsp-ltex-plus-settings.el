@@ -36,40 +36,10 @@
   :group 'text
   :prefix "lsp-ltex-plus-")
 
-;; Directory-local safety, modelled on AUCTeX (and on Emacs core, which declares
-;; `fill-column' safe for an integer and `indent-tabs-mode' for a boolean).  The
-;; package vouches for a setting with `:safe' and a predicate rather than
-;; leaving every user to answer the same question in every project:
-;;
-;;   - Settings that can only change how text is checked are declared safe on a
-;;     type check alone.  The worst a `.dir-locals.el' can do with them is check
-;;     in the wrong language, or accept a word you did not choose.
-;;   - Settings naming a file this package *writes* are held to more than a type
-;;     check: see `lsp-ltex-plus--project-file-safe-p', which follows AUCTeX's
-;;     `TeX--output-dir-safe-p' in accepting only a name that cannot lead
-;;     outside the tree its `.dir-locals.el' governs.
-;;   - Four live settings are deliberately left unvouched for, so that Emacs
-;;     asks before a repository you cloned can set them.  Do not "complete"
-;;     the set by adding `:safe' to them:
-;;
-;;     The line is drawn at security threats, not at configurations a user
-;;     might find surprising -- those are the user's responsibility.  So the
-;;     LanguageTool credentials are vouched for (a `.dir-locals.el' can only
-;;     set a variable, never read one, so a repository cannot learn a key
-;;     this way; substituting its own is visible in its own file), and so is
-;;     the n-gram model directory, whose worst case is that its extra rules
-;;     do not work.
-;;
-;;     `lsp-ltex-plus-lt-server-uri' is the middle case: it names the host
-;;     every document you edit is sent to, so it is vouched for by an
-;;     allowlist of destinations rather than by a type check.  Unset and
-;;     LanguageTool Premium pass; any other host still asks.  See
-;;     `lsp-ltex-plus--lt-server-uri-safe-p'.
-;;
-;;     Settings read only at server start or at client setup carry no `:safe'
-;;     either — not because they are dangerous, but because a project-local
-;;     value would silently do nothing, and vouching for it would imply
-;;     otherwise.
+;; Which values a `.dir-locals.el' may set without a prompt is declared in
+;; `lsp-ltex-plus--safe-variables', in the bootstrap file, so that it is in
+;; force before Emacs reads the first file's directory-local values.
+(lsp-ltex-plus-register-safe-variables)
 
 (defcustom lsp-ltex-plus-ls-plus-executable "ltex-ls-plus"
   "The name or path of the ltex-ls-plus executable."
@@ -209,7 +179,6 @@ regex tables.  The common effect is to minimise false positives from
 commented-out code.  Python comments are parsed as reStructuredText;
 all others are parsed as Markdown."
   :type 'boolean
-  :safe #'booleanp
   :group 'lsp-ltex-plus)
 
 (defconst lsp-ltex-plus--languages
@@ -304,7 +273,6 @@ end of the document; a later `language=#' restores this setting.
 To change it for one buffer, or for the whole session, from a menu of
 the supported languages, use \\[lsp-ltex-plus-change-language]."
   :type `(choice ,@(mapcar #'lsp-ltex-plus--language-const lsp-ltex-plus--languages))
-  :safe #'stringp
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-offered-languages nil
@@ -321,35 +289,7 @@ document, such as `<!-- LTeX: language=de-DE -->' in Markdown or
 from that line to the end of the document, whether or not this list
 names the language; a later `language=#' restores the buffer's value."
   :type `(set ,@(mapcar #'lsp-ltex-plus--language-const lsp-ltex-plus--languages))
-  :safe #'list-of-strings-p
   :group 'lsp-ltex-plus)
-
-(defun lsp-ltex-plus--symbol-keyed-alist-p (value)
-  "Non-nil when VALUE is an alist of symbol keys with string or boolean values.
-The shape the parser tables take — `lsp-ltex-plus-bibtex-fields',
-`-latex-commands', `-latex-environments', `-markdown-nodes'.  Used as
-their `:safe' predicate: such a value only changes how a document is
-parsed before it is checked, so a project may set one without asking."
-  (and (listp value)
-       (seq-every-p (lambda (cell)
-                      (and (consp cell)
-                           (symbolp (car cell))
-                           (or (stringp (cdr cell))
-                               (memq (cdr cell) '(t nil)))))
-                    value)))
-
-(defun lsp-ltex-plus--language-plist-p (value)
-  "Non-nil when VALUE is a language-keyed plist of vectors of strings.
-The shape the four language-keyed settings take, e.g.
-\\='(:en-US [\"foo\"] :de-DE [\"bar\"]).  Used as the `:safe' predicate for
-those settings: a value of this shape only ever adds words or rule
-names to a check, so a project may set one without confirmation."
-  (and (listp value)
-       (cl-evenp (length value))
-       (cl-loop for (key val) on value by #'cddr
-                always (and (keywordp key)
-                            (vectorp val)
-                            (seq-every-p #'stringp val)))))
 
 (defcustom lsp-ltex-plus-dictionary nil
   "Additional words accepted as correctly spelled, per language.
@@ -364,7 +304,6 @@ lists, prefer editing the on-disk file (see the External settings
 section in the README) rather than stuffing everything into this
 variable."
   :type 'plist
-  :safe #'lsp-ltex-plus--language-plist-p
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-enabled-rules nil
@@ -373,7 +312,6 @@ This setting is language-specific, so use an object of the format
 \\='(:en-US [\"RULE1\" \"RULE2\"] :de-DE [\"RULE1\" ...]) where the key is
 the language code and the value is a vector of rule IDs."
   :type 'plist
-  :safe #'lsp-ltex-plus--language-plist-p
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-disabled-rules nil
@@ -382,7 +320,6 @@ This setting is language-specific, so use an object of the format
 \\='(:en-US [\"RULE1\" \"RULE2\"] :de-DE [\"RULE1\" ...]) where the key is
 the language code and the value is a vector of rule IDs."
   :type 'plist
-  :safe #'lsp-ltex-plus--language-plist-p
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-hidden-false-positives nil
@@ -399,7 +336,6 @@ separate and merged on the fly for the server.  See the LTeX+
 documentation for the feature:
 https://ltex-plus.github.io/ltex-plus/advanced-usage.html#hiding-false-positives-with-regular-expressions"
   :type 'plist
-  :safe #'lsp-ltex-plus--language-plist-p
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-bibtex-fields nil
@@ -409,7 +345,6 @@ where true means that the field value should be checked and false means that
 the field value should be ignored.  Field names are listed as symbols
 \(e.g., `title')."
   :type 'alist
-  :safe #'lsp-ltex-plus--symbol-keyed-alist-p
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-latex-commands nil
@@ -420,7 +355,6 @@ actions as values (\"default\", \"ignore\", \"dummy\", \"pluralDummy\",
 arguments and the initial backslash doubled, e.g. `\\\\ref{}',
 `\\\\documentclass[]{}'."
   :type 'alist
-  :safe #'lsp-ltex-plus--symbol-keyed-alist-p
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-latex-environments nil
@@ -429,7 +363,6 @@ This setting is an object with the environment names as keys and corresponding
 actions as values (\"default\", \"ignore\").  Environment names are listed as
 symbols (e.g., `lstlisting')."
   :type 'alist
-  :safe #'lsp-ltex-plus--symbol-keyed-alist-p
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-markdown-nodes nil
@@ -438,7 +371,6 @@ This setting is an object with the node types as keys and corresponding
 actions as values (\"default\", \"ignore\", \"dummy\", \"pluralDummy\",
 \"vowelDummy\").  Node types are listed as symbols (e.g., `CodeBlock')."
   :type 'alist
-  :safe #'lsp-ltex-plus--symbol-keyed-alist-p
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-additional-rules-enable-picky-rules nil
@@ -446,7 +378,6 @@ actions as values (\"default\", \"ignore\", \"dummy\", \"pluralDummy\",
 These are disabled by default, e.g., rules about passive voice, sentence length,
 etc., at the cost of more false positives."
   :type 'boolean
-  :safe #'booleanp
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-additional-rules-mother-tongue nil
@@ -454,7 +385,6 @@ etc., at the cost of more false positives."
 If set, additional rules will be checked to detect false friends. Picky rules
 may need to be enabled in order to see an effect.  nil means unset."
   :type '(choice (const :tag "Unset" nil) (string :tag "Language code"))
-  :safe #'string-or-null-p
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-additional-rules-language-model nil
@@ -462,31 +392,7 @@ may need to be enabled in order to see an effect.  nil means unset."
 Set this to the parent directory that contains subdirectories for
 languages.  nil means unset."
   :type '(choice (const :tag "Unset" nil) (directory :tag "Directory"))
-  :safe #'string-or-null-p
   :group 'lsp-ltex-plus)
-
-(defconst lsp-ltex-plus--vouched-lt-server-uris
-  '("https://api.languagetoolplus.com"
-    "https://api.languagetoolplus.com/")
-  "LanguageTool endpoints a project may select without being asked.
-Only LanguageTool's own Premium service.  Everything reached through
-this setting receives the full text of every document you edit, so the
-list is an allowlist of destinations, not a syntax check: any other
-host stays subject to Emacs' usual confirmation.")
-
-(defun lsp-ltex-plus--lt-server-uri-safe-p (value)
-  "Non-nil when VALUE is an endpoint safe to accept from a `.dir-locals.el'.
-Unset (nil, or the empty string an older config may still carry) means
-the local built-in LanguageTool and sends nothing anywhere.  The only
-remote destination vouched for is LanguageTool's own Premium service;
-see `lsp-ltex-plus--vouched-lt-server-uris'.  Between them these are
-what nearly every configuration uses, so the prompt is reserved for the
-case that genuinely warrants one: a project pointing your prose at some
-other host."
-  (or (null value)
-      (and (stringp value)
-           (or (equal value "")
-               (member value lsp-ltex-plus--vouched-lt-server-uris)))))
 
 (defcustom lsp-ltex-plus-lt-server-uri nil
   "Base URI for the LanguageTool HTTP server.
@@ -502,21 +408,18 @@ but any other host goes through Emacs' usual confirmation; see
 `lsp-ltex-plus--lt-server-uri-safe-p'."
   :type '(choice (const :tag "Local (Built-in)" nil)
                  (string :tag "Remote URI"))
-  :safe #'lsp-ltex-plus--lt-server-uri-safe-p
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-lt-username nil
   "Username/email as used to log in at languagetool.org for Premium API access.
 Only relevant if `lsp-ltex-plus-lt-server-uri' is set.  nil means unset."
   :type '(choice (const :tag "Unset" nil) (string :tag "Username/email"))
-  :safe #'string-or-null-p
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-lt-api-key nil
   "API key for Premium API access.
 Only relevant if `lsp-ltex-plus-lt-server-uri' is set.  nil means unset."
   :type '(choice (const :tag "Unset" nil) (string :tag "API key"))
-  :safe #'string-or-null-p
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-ltex-ls-path nil
@@ -594,7 +497,6 @@ remote LanguageTool service.  If you use a local server
 consider raising it to 60000.  This does not affect caching granularity,
 which is always per paragraph."
   :type 'integer
-  :safe #'integerp
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-paragraph-cache-ttl-minutes 30
@@ -605,7 +507,6 @@ actively editing stay warm; a document left untouched for longer than
 this is dropped from the cache.  A document's cache is also cleared as
 soon as the file is closed."
   :type 'integer
-  :safe #'integerp
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-paragraph-cache-enabled t
@@ -620,7 +521,6 @@ sliced paragraphs are just never stored or served from the cache.
 Disabling this and setting `lsp-ltex-plus-sentence-cache-size' to a
 positive value restores LanguageTool's own caching instead."
   :type 'boolean
-  :safe #'booleanp
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-completion-enabled nil
@@ -629,14 +529,12 @@ Not available in 1.0.0: the client does not yet request completions.
 Planned for a future release; until then the setting has no visible
 effect, though it is still sent to the server."
   :type 'boolean
-  :safe #'booleanp
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-diagnostic-severity "warning"
   "Severity of the diagnostics corresponding to the grammar and spelling errors.
 Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
   :type '(choice (const "error") (const "warning") (const "information") (const "hint"))
-  :safe #'stringp
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-check-frequency "edit"
@@ -645,16 +543,10 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
 - \"save\": checked when opened or saved.
 - \"manual\": use commands to manually trigger checks."
   :type '(choice (const "edit") (const "save") (const "manual"))
-  :safe #'stringp
   :group 'lsp-ltex-plus)
 
 (define-obsolete-variable-alias 'lsp-ltex-plus-change-delay
   'lsp-ltex-plus-idle-delay "1.1.0")
-
-;; `safe-local-variable' does not follow an alias, so a project whose
-;; `.dir-locals.el' still names the old variable would start asking the
-;; user to approve a value this package has always vouched for.
-(put 'lsp-ltex-plus-change-delay 'safe-local-variable #'numberp)
 
 (defcustom lsp-ltex-plus-idle-delay 0.5
   "Seconds of quiet after an edit before the buffer is sent to the server.
@@ -669,14 +561,12 @@ edit, because Emacs counts as idle only when it is waiting for the
 user, which a batch Emacs never does and a buffer receiving output from
 a process need not."
   :type 'number
-  :safe #'numberp
   :group 'lsp-ltex-plus)
 
 
 (defcustom lsp-ltex-plus-clear-diagnostics-when-closing-file t
   "If set to true, diagnostics of a file are cleared when the file is closed."
   :type 'boolean
-  :safe #'booleanp
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-check-fileless-buffers t
@@ -692,7 +582,6 @@ file-less buffer in a programming mode (such as *scratch*, which uses
 checks are also enabled, but an explicit \\[lsp-ltex-plus-mode] always
 works."
   :type 'boolean
-  :safe #'booleanp
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-disable-flyspell nil
@@ -707,12 +596,7 @@ where this package stopped it.  Off by default: a package should not
 switch another mode off unasked, and some people want flyspell for the
 code around the comments LTeX+ checks."
   :type 'boolean
-  :safe #'booleanp
   :group 'lsp-ltex-plus)
-
-(defun lsp-ltex-plus--diagnostics-provider-p (value)
-  "Non-nil when VALUE is one of the `lsp-ltex-plus-diagnostics-provider' choices."
-  (memq value '(flymake flycheck)))
 
 (defcustom lsp-ltex-plus-diagnostics-provider 'flymake
   "Which front-end shows the server's diagnostics: `flymake' or `flycheck'.
@@ -724,7 +608,6 @@ buffers checked from then on; turning `lsp-ltex-plus-mode' off and on
 again moves a buffer that is already being checked."
   :type '(choice (const :tag "Flymake (part of Emacs)" flymake)
                  (const :tag "Flycheck" flycheck))
-  :safe #'lsp-ltex-plus--diagnostics-provider-p
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-check-comint-input t
@@ -739,7 +622,6 @@ identity like any file-less buffer; what is sent as the document is the
 input region alone, and while the program is producing output nothing
 is sent at all.  See `lsp-ltex-plus-comint.el'."
   :type 'boolean
-  :safe #'booleanp
   :group 'lsp-ltex-plus)
 
 (defvar lsp-ltex-plus-trace-server "off"
@@ -1017,19 +899,6 @@ list."
 ;; variables and therefore no project files, so they see the global lists
 ;; alone.  That is the right answer: they belong to no project.
 
-(defun lsp-ltex-plus--project-file-safe-p (value)
-  "Non-nil when VALUE is safe as a directory-local project settings file.
-Safe means nil, or a relative name with no `..' component — one that
-cannot reach outside the tree its `.dir-locals.el' governs.  This package
-creates and writes these files, so a name that could escape that tree is
-left for the user to confirm in the usual way.  Modelled on AUCTeX's
-`TeX--output-dir-safe-p', which applies the same rule to `TeX-output-dir'
-for the same reason."
-  (or (null value)
-      (and (stringp value)
-           (not (file-name-absolute-p value))
-           (not (member ".." (split-string value "/" t))))))
-
 (defmacro lsp-ltex-plus--define-project-file (name file description)
   "Define NAME as the project counterpart of a global settings file.
 FILE is the suggested basename shown in the docstring and DESCRIPTION
@@ -1055,7 +924,6 @@ keyword keys, vectors of strings as values, e.g.
   (:en-US [\"Wittgenstein\"] :de-DE [\"Widerspiegelung\"])"
               description name file)
      :type '(choice (const :tag "None" nil) file)
-     :safe #'lsp-ltex-plus--project-file-safe-p
      :group 'lsp-ltex-plus))
 
 ;; Renamed in 1.2.0 so that each sorts next to its global counterpart,
@@ -1068,15 +936,6 @@ keyword keys, vectors of strings as values, e.g.
   'lsp-ltex-plus-disabled-rules-project-file "1.2.0")
 (define-obsolete-variable-alias 'lsp-ltex-plus-project-hidden-false-positives-file
   'lsp-ltex-plus-hidden-false-positives-project-file "1.2.0")
-
-;; `safe-local-variable' does not follow an alias, so a project whose
-;; `.dir-locals.el' still names an old variable would start asking the
-;; user to approve a value this package has always vouched for.
-(dolist (old '(lsp-ltex-plus-project-dictionary-file
-               lsp-ltex-plus-project-enabled-rules-file
-               lsp-ltex-plus-project-disabled-rules-file
-               lsp-ltex-plus-project-hidden-false-positives-file))
-  (put old 'safe-local-variable #'lsp-ltex-plus--project-file-safe-p))
 
 (lsp-ltex-plus--define-project-file lsp-ltex-plus-dictionary-project-file
                                     ".ltex/dictionary.eld"
@@ -1225,11 +1084,6 @@ project's file, if it has one."
 ;; a project's `.dir-locals.el', so one project can depart from the habit you
 ;; keep everywhere else.
 
-(defun lsp-ltex-plus--save-additions-to-p (value)
-  "Non-nil when VALUE is one of the `lsp-ltex-plus-save-additions-to' choices."
-  (memq value '(globally-defined per-project-when-specified
-                either-allowing-user-choice)))
-
 (defcustom lsp-ltex-plus-save-additions-to 'either-allowing-user-choice
   "Where an addition goes when you accept one of LTeX+'s suggestions.
 
@@ -1271,7 +1125,6 @@ write."
                         per-project-when-specified)
                  (const :tag "Offer both and let me choose each time"
                         either-allowing-user-choice))
-  :safe #'lsp-ltex-plus--save-additions-to-p
   :group 'lsp-ltex-plus)
 
 ;; Marker carried on the copies of a suggestion that

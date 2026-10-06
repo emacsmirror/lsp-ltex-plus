@@ -289,7 +289,189 @@ is installed only once."
     (when extend-to
       (setq pairs (append pairs extend-to)))
     (setq lsp-ltex-plus--enabled-modes (mapcar #'car pairs))
+    (lsp-ltex-plus-register-safe-variables)
     (add-hook 'after-change-major-mode-hook #'lsp-ltex-plus--maybe-activate)))
+
+;;;; -- Directory-local safety -------------------------------------------------
+
+;; These declarations live here, not on the defcustoms, because Emacs reads a
+;; project's `.dir-locals.el' when it visits a file, before
+;; `after-change-major-mode-hook' runs the dispatcher that loads the full
+;; package.  A `:safe' on a defcustom in `lsp-ltex-plus-settings.el' does not
+;; exist yet at that moment, so Emacs asked about every value the package
+;; vouches for in the first file of the session.
+;;
+;; Directory-local safety, modelled on AUCTeX (and on Emacs core, which declares
+;; `fill-column' safe for an integer and `indent-tabs-mode' for a boolean).  The
+;; package vouches for a setting with a predicate rather than leaving every
+;; user to answer the same question in every project:
+;;
+;;   - Settings that can only change how text is checked are declared safe on a
+;;     type check alone.  The worst a `.dir-locals.el' can do with them is check
+;;     in the wrong language, or accept a word you did not choose.
+;;   - Settings naming a file this package *writes* are held to more than a type
+;;     check: see `lsp-ltex-plus--project-file-safe-p', which follows AUCTeX's
+;;     `TeX--output-dir-safe-p' in accepting only a name that cannot lead
+;;     outside the tree its `.dir-locals.el' governs.
+;;   - Four live settings are deliberately left unvouched for, so that Emacs
+;;     asks before a repository you cloned can set them.  Do not "complete"
+;;     the set by adding them to `lsp-ltex-plus--safe-variables':
+;;
+;;     The line is drawn at security threats, not at configurations a user
+;;     might find surprising -- those are the user's responsibility.  So the
+;;     LanguageTool credentials are vouched for (a `.dir-locals.el' can only
+;;     set a variable, never read one, so a repository cannot learn a key
+;;     this way; substituting its own is visible in its own file), and so is
+;;     the n-gram model directory, whose worst case is that its extra rules
+;;     do not work.
+;;
+;;     `lsp-ltex-plus-lt-server-uri' is the middle case: it names the host
+;;     every document you edit is sent to, so it is vouched for by an
+;;     allowlist of destinations rather than by a type check.  Unset and
+;;     LanguageTool Premium pass; any other host still asks.  See
+;;     `lsp-ltex-plus--lt-server-uri-safe-p'.
+;;
+;;     Settings read only at server start or at client setup are not in the
+;;     table either — not because they are dangerous, but because a
+;;     project-local value would silently do nothing, and vouching for it
+;;     would imply otherwise.
+
+(defun lsp-ltex-plus--symbol-keyed-alist-p (value)
+  "Non-nil when VALUE is an alist of symbol keys with string or boolean values.
+The shape the parser tables take — `lsp-ltex-plus-bibtex-fields',
+`-latex-commands', `-latex-environments', `-markdown-nodes'.  Used as
+their safety predicate: such a value only changes how a document is
+parsed before it is checked, so a project may set one without asking."
+  (and (listp value)
+       (cl-every (lambda (cell)
+                   (and (consp cell)
+                        (symbolp (car cell))
+                        (or (stringp (cdr cell))
+                            (memq (cdr cell) '(t nil)))))
+                 value)))
+
+(defun lsp-ltex-plus--language-plist-p (value)
+  "Non-nil when VALUE is a language-keyed plist of vectors of strings.
+The shape the four language-keyed settings take, e.g.
+\\='(:en-US [\"foo\"] :de-DE [\"bar\"]).  Used as the safety predicate for
+those settings: a value of this shape only ever adds words or rule
+names to a check, so a project may set one without confirmation."
+  (and (listp value)
+       (cl-evenp (length value))
+       (cl-loop for (key val) on value by #'cddr
+                always (and (keywordp key)
+                            (vectorp val)
+                            (cl-every #'stringp val)))))
+
+(defconst lsp-ltex-plus--vouched-lt-server-uris
+  '("https://api.languagetoolplus.com"
+    "https://api.languagetoolplus.com/")
+  "LanguageTool endpoints a project may select without being asked.
+Only LanguageTool's own Premium service.  Everything reached through
+this setting receives the full text of every document you edit, so the
+list is an allowlist of destinations, not a syntax check: any other
+host stays subject to Emacs' usual confirmation.")
+
+(defun lsp-ltex-plus--lt-server-uri-safe-p (value)
+  "Non-nil when VALUE is an endpoint safe to accept from a `.dir-locals.el'.
+Unset (nil, or the empty string an older config may still carry) means
+the local built-in LanguageTool and sends nothing anywhere.  The only
+remote destination vouched for is LanguageTool's own Premium service;
+see `lsp-ltex-plus--vouched-lt-server-uris'.  Between them these are
+what nearly every configuration uses, so the prompt is reserved for the
+case that genuinely warrants one: a project pointing your prose at some
+other host."
+  (or (null value)
+      (and (stringp value)
+           (or (equal value "")
+               (member value lsp-ltex-plus--vouched-lt-server-uris)))))
+
+(defun lsp-ltex-plus--project-file-safe-p (value)
+  "Non-nil when VALUE is safe as a directory-local project settings file.
+Safe means nil, or a relative name with no `..' component — one that
+cannot reach outside the tree its `.dir-locals.el' governs.  This package
+creates and writes these files, so a name that could escape that tree is
+left for the user to confirm in the usual way.  Modelled on AUCTeX's
+`TeX--output-dir-safe-p', which applies the same rule to `TeX-output-dir'
+for the same reason."
+  (or (null value)
+      (and (stringp value)
+           (not (file-name-absolute-p value))
+           (not (member ".." (split-string value "/" t))))))
+
+(defun lsp-ltex-plus--diagnostics-provider-p (value)
+  "Non-nil when VALUE is one of the `lsp-ltex-plus-diagnostics-provider' choices."
+  (memq value '(flymake flycheck)))
+
+(defun lsp-ltex-plus--save-additions-to-p (value)
+  "Non-nil when VALUE is one of the `lsp-ltex-plus-save-additions-to' choices."
+  (memq value '(globally-defined per-project-when-specified
+                either-allowing-user-choice)))
+
+(defconst lsp-ltex-plus--safe-variables
+  '((lsp-ltex-plus-language                            . stringp)
+    (lsp-ltex-plus-offered-languages                   . list-of-strings-p)
+    (lsp-ltex-plus-dictionary                          . lsp-ltex-plus--language-plist-p)
+    (lsp-ltex-plus-enabled-rules                       . lsp-ltex-plus--language-plist-p)
+    (lsp-ltex-plus-disabled-rules                      . lsp-ltex-plus--language-plist-p)
+    (lsp-ltex-plus-hidden-false-positives              . lsp-ltex-plus--language-plist-p)
+    (lsp-ltex-plus-bibtex-fields                       . lsp-ltex-plus--symbol-keyed-alist-p)
+    (lsp-ltex-plus-latex-commands                      . lsp-ltex-plus--symbol-keyed-alist-p)
+    (lsp-ltex-plus-latex-environments                  . lsp-ltex-plus--symbol-keyed-alist-p)
+    (lsp-ltex-plus-markdown-nodes                      . lsp-ltex-plus--symbol-keyed-alist-p)
+    (lsp-ltex-plus-additional-rules-enable-picky-rules . booleanp)
+    (lsp-ltex-plus-additional-rules-mother-tongue      . string-or-null-p)
+    (lsp-ltex-plus-additional-rules-language-model     . string-or-null-p)
+    (lsp-ltex-plus-lt-server-uri                       . lsp-ltex-plus--lt-server-uri-safe-p)
+    (lsp-ltex-plus-lt-username                         . string-or-null-p)
+    (lsp-ltex-plus-lt-api-key                          . string-or-null-p)
+    (lsp-ltex-plus-max-request-size                    . integerp)
+    (lsp-ltex-plus-paragraph-cache-ttl-minutes         . integerp)
+    (lsp-ltex-plus-paragraph-cache-enabled             . booleanp)
+    (lsp-ltex-plus-completion-enabled                  . booleanp)
+    (lsp-ltex-plus-diagnostic-severity                 . stringp)
+    (lsp-ltex-plus-check-frequency                     . stringp)
+    (lsp-ltex-plus-check-programming-languages         . booleanp)
+    (lsp-ltex-plus-idle-delay                          . numberp)
+    (lsp-ltex-plus-clear-diagnostics-when-closing-file . booleanp)
+    (lsp-ltex-plus-check-fileless-buffers              . booleanp)
+    (lsp-ltex-plus-disable-flyspell                    . booleanp)
+    (lsp-ltex-plus-diagnostics-provider                . lsp-ltex-plus--diagnostics-provider-p)
+    (lsp-ltex-plus-check-comint-input                  . booleanp)
+    (lsp-ltex-plus-dictionary-project-file             . lsp-ltex-plus--project-file-safe-p)
+    (lsp-ltex-plus-enabled-rules-project-file          . lsp-ltex-plus--project-file-safe-p)
+    (lsp-ltex-plus-disabled-rules-project-file         . lsp-ltex-plus--project-file-safe-p)
+    (lsp-ltex-plus-hidden-false-positives-project-file . lsp-ltex-plus--project-file-safe-p)
+    (lsp-ltex-plus-save-additions-to                   . lsp-ltex-plus--save-additions-to-p)
+    ;; Obsolete names.  `safe-local-variable' does not follow an alias, so
+    ;; a project whose `.dir-locals.el' still names an old variable would
+    ;; start asking the user to approve a value this package has always
+    ;; vouched for.
+    (lsp-ltex-plus-change-delay                        . numberp)
+    (lsp-ltex-plus-project-dictionary-file             . lsp-ltex-plus--project-file-safe-p)
+    (lsp-ltex-plus-project-enabled-rules-file          . lsp-ltex-plus--project-file-safe-p)
+    (lsp-ltex-plus-project-disabled-rules-file         . lsp-ltex-plus--project-file-safe-p)
+    (lsp-ltex-plus-project-hidden-false-positives-file . lsp-ltex-plus--project-file-safe-p))
+  "Settings a `.dir-locals.el' may set without a prompt, with their predicates.
+Each entry is (VARIABLE . PREDICATE); `lsp-ltex-plus-register-safe-variables'
+puts PREDICATE on VARIABLE's `safe-local-variable' property.")
+
+(defvar lsp-ltex-plus--safe-variables-registered nil
+  "Non-nil once `lsp-ltex-plus-register-safe-variables' has run.")
+
+;;;###autoload
+(defun lsp-ltex-plus-register-safe-variables ()
+  "Declare which values of this package's settings are safe as directory-local.
+Emacs applies such a value from a project's `.dir-locals.el' without
+asking.  `lsp-ltex-plus-enable-for-modes' calls this function, and so
+does loading the package; call it yourself from `:init' only if you do
+not call `lsp-ltex-plus-enable-for-modes', since Emacs reads the
+directory-local values of the first file you visit before the package
+is loaded.  Calling it again does nothing."
+  (unless lsp-ltex-plus--safe-variables-registered
+    (pcase-dolist (`(,variable . ,predicate) lsp-ltex-plus--safe-variables)
+      (put variable 'safe-local-variable predicate))
+    (setq lsp-ltex-plus--safe-variables-registered t)))
 
 (provide 'lsp-ltex-plus-bootstrap)
 ;;; lsp-ltex-plus-bootstrap.el ends here

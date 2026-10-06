@@ -222,6 +222,9 @@ The most idiomatic way to use this package is to call `lsp-ltex-plus-enable-for-
 (use-package lsp-ltex-plus
   :defer t
   :init
+  ;; If you do not call `lsp-ltex-plus-enable-for-modes', uncomment the
+  ;; next line, so that a project's `.dir-locals.el' applies without a prompt.
+  ;; (lsp-ltex-plus-register-safe-variables)
   (lsp-ltex-plus-enable-for-modes))
 ```
 
@@ -615,7 +618,7 @@ None of this applies to a project that keeps no lists of its own: there is nowhe
 
 Because this is an ordinary setting, a single project can depart from your usual habit by setting it in its own `.dir-locals.el`.
 
-**On confirmation prompts.** Emacs asks before applying a directory-local variable unless the package has vouched for the value, and this package vouches for everything marked **X** in the parameter table, so a project's `.dir-locals.el` normally just works.
+**On confirmation prompts.** Emacs asks before applying a directory-local variable unless the package has vouched for the value, and this package vouches for everything marked **X** in the parameter table, so a project's `.dir-locals.el` normally just works. The declarations are made by `lsp-ltex-plus-enable-for-modes`, because Emacs reads `.dir-locals.el` before the package is loaded; if you do not call that function, call `lsp-ltex-plus-register-safe-variables` from `:init` instead (see [Basic Configuration](#basic-configuration)).
 
 Two are qualified, for safety. `lsp-ltex-plus-lt-server-uri` names the host every document is sent to, so only leaving it unset (the built-in checker) or selecting LanguageTool Premium applies silently; any other host asks. And the four project *file* settings, which this package writes to, apply silently only for a relative path free of `..` — one that cannot lead outside the project. Absolute paths still work in both cases; Emacs just asks first.
 
@@ -854,7 +857,7 @@ A check as it appears in the events buffer: a `textDocument/didChange` goes out 
 
 The package is split into a tiny bootstrap file and the client proper:
 
-- **`lsp-ltex-plus-bootstrap.el`** — tiny, no dependencies. Loaded at `:init` time. Defines the major-mode alist and exposes the autoloaded entry point.
+- **`lsp-ltex-plus-bootstrap.el`** — tiny, no dependencies. Loaded at `:init` time. Defines the major-mode alist, declares which directory-local values are safe, and exposes the autoloaded entry point.
 - **`lsp-ltex-plus.el`** and the files it requires — the settings, the connection, the flymake backend and the flycheck checker, the code actions, the comint region. Loaded lazily, only when a relevant buffer is first opened.
 
 #### Setup: what happens at startup
