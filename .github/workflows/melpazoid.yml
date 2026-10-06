@@ -74,7 +74,6 @@ jobs:
           # The package is on MELPA already; without this, melpazoid
           # reports its presence there as a problem.
           EXIST_OK: 'true'
-        # The script itself, not `make': melpazoid's `run' target also
-        # type-checks melpazoid's own source with mypy, which is in its
-        # dev dependencies and not installed here.
+        # The same command as melpazoid's `make run' since its commit
+        # bb24511.
         run: cd ~/melpazoid && python3 melpazoid/melpazoid.py
